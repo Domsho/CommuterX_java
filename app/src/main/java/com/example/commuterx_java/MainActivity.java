@@ -27,7 +27,15 @@ public class MainActivity extends AppCompatActivity {
 
     FirebaseAuth mAuth;
 
-
+    @Override
+    public void onStart() {
+        super.onStart();
+        // Check if user is signed in (non-null) and update UI accordingly.
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if(currentUser != null){
+            reload();
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,12 +72,18 @@ public class MainActivity extends AppCompatActivity {
                             @Override
                             public void onComplete(@NonNull Task<AuthResult> task) {
                                 if (task.isSuccessful()) {
+                                    Log.d(TAG, "signInWithEmail:success");
+                                    FirebaseUser user = mAuth.getCurrentUser();
+                                    updateUI(user);
                                     Toast.makeText(MainActivity.this, "Login Successfull!", Toast.LENGTH_SHORT).show();
                                     Intent intent = new Intent(getApplicationContext(), HomeActivity.class);
                                     startActivity(intent);
                                     finish();
                                 } else {
-
+                                    Log.w(TAG, "signInWithEmail:failure", task.getException());
+                                    Toast.makeText(EmailPasswordActivity.this, "Authentication failed.",
+                                            Toast.LENGTH_SHORT).show();
+                                    updateUI(null);
                                     Toast.makeText(MainActivity.this, "Incorrect Email or Password",
                                             Toast.LENGTH_SHORT).show();
 
