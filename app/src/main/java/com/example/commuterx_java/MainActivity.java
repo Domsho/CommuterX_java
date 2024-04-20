@@ -27,16 +27,7 @@ public class MainActivity extends AppCompatActivity {
 
     FirebaseAuth mAuth;
 
-  /*  @Override <--------------- UNCOMMENT IF U DON'T WANNA LOG IN
-    public void onStart() {
-        super.onStart();
-        FirebaseUser currentUser = mAuth.getCurrentUser();
-        if(currentUser != null){
-            Intent intent = new Intent(getApplicationContext(), HomeActivity.class);
-            startActivity(intent);
-            finish();
-        }
-    } */
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
