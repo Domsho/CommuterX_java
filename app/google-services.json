@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "862287981749",
+    "project_id": "commuterx-8854f",
+    "storage_bucket": "commuterx-8854f.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:862287981749:android:359476cd77b4bad88ee2fc",
+        "android_client_info": {
+          "package_name": "com.example.commuterx"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDoI_05XyC2R3DLtZ6jQl7zyZ80uqjjZBc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:862287981749:android:4e29f7a96ea7cd4c8ee2fc",
+        "android_client_info": {
+          "package_name": "com.example.commuterx_java"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDoI_05XyC2R3DLtZ6jQl7zyZ80uqjjZBc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
