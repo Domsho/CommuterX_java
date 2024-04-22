@@ -61,28 +61,35 @@
     <com.google.android.material.button.MaterialButton
         android:layout_width="300dp"
         android:layout_height="56dp"
-        android:id="@+id/btnRegister"
-        android:layout_below="@+id/registration_password"
-        android:text="Register"
+        android:id="@+id/btnLogin"
+        android:layout_below="@+id/sign_in_button"
+        android:text="Login"
         android:padding="10dp"
         android:backgroundTint="#000"
         android:elevation="30dp"
         android:layout_centerHorizontal="true"
-        android:layout_marginTop="30dp"
+        android:layout_marginTop="10dp"
         />
 
     <com.google.android.material.button.MaterialButton
         android:layout_width="300dp"
         android:layout_height="56dp"
         android:id="@+id/btnLogin2"
-        android:layout_below="@+id/btnRegister"
-        android:text="Login"
+        android:layout_below="@+id/btnLogin"
+        android:text="Register"
         android:padding="10dp"
         android:backgroundTint="#000"
         android:elevation="30dp"
         android:layout_centerHorizontal="true"
 
         />
+
+    <com.google.android.gms.common.SignInButton
+        android:id="@+id/sign_in_button"
+        android:layout_width="wrap_content"
+        android:layout_below="@id/registration_password"
+        android:layout_centerHorizontal="true"
+        android:layout_height="wrap_content" />
 
 
 

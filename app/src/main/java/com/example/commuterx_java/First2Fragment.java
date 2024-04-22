@@ -22,6 +22,10 @@ public class First2Fragment extends Fragment {
     ) {
 
         binding = FragmentFirst2Binding.inflate(inflater, container, false);
+
+        // Set the text for the TextView
+        binding.textView.setText("Welcome to the Homepage!");
+
         return binding.getRoot();
 
     }
@@ -29,16 +33,11 @@ public class First2Fragment extends Fragment {
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        binding.buttonFirst.setOnClickListener(v ->
+        // Set the button click listener
+        binding.button.setOnClickListener(v ->
                 NavHostFragment.findNavController(First2Fragment.this)
                         .navigate(R.id.action_First2Fragment_to_Second2Fragment)
         );
-    }
-
-    @Override
-    public void onDestroyView() {
-        super.onDestroyView();
-        binding = null;
     }
 
 }
