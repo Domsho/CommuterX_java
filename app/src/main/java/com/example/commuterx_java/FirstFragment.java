@@ -23,8 +23,7 @@ public class FirstFragment extends Fragment {
 
         binding = FragmentFirstBinding.inflate(inflater, container, false);
 
-        // Set the text for the TextView
-        binding.textView.setText("Welcome to the Homepage!");
+
 
         return binding.getRoot();
 
