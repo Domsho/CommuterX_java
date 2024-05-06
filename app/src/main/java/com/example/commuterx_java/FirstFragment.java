@@ -28,14 +28,4 @@ public class FirstFragment extends Fragment {
         return binding.getRoot();
 
     }
-
-    public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
-
-        // Set the button click listener
-        binding.button.setOnClickListener(v ->
-                NavHostFragment.findNavController(FirstFragment.this)
-                        .navigate(R.id.action_FirstFragment_to_SecondFragment)
-        );
-    }
 }

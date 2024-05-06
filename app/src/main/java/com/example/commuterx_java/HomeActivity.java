@@ -7,7 +7,7 @@ import com.google.android.material.snackbar.Snackbar;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.view.View;
-
+import androidx.appcompat.widget.Toolbar;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
@@ -26,6 +26,12 @@ public class HomeActivity extends AppCompatActivity {
 
         binding = ActivityHomeBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+
+        // Get a reference to the Toolbar
+        Toolbar toolbar = findViewById(R.id.toolbar);
+
+        // Hide the Toolbar
+        toolbar.setVisibility(View.GONE);
 
         setSupportActionBar(binding.toolbar);
 
