@@ -16,7 +16,6 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
@@ -26,6 +25,13 @@ import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.material.button.MaterialButton;
+import androidx.navigation.NavController;
+import androidx.navigation.Navigation;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -36,6 +42,8 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     private static final int RC_SIGN_IN = 2023;
     SignInButton signInButton;
+
+    private NavController navController;
 
     @Override
     public void onStart() {
@@ -58,6 +66,33 @@ public class MainActivity extends AppCompatActivity {
 
         mAuth = FirebaseAuth.getInstance();
 
+        navController = Navigation.findNavController(this, R.id.nav_host_fragment);
+
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user != null) {
+            String userId = user.getUid();
+            DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference("users");
+            databaseReference.child(userId).addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot snapshot) {
+                    if (snapshot.exists()) {
+                        // User already has a username, navigate to FirstFragment
+                        navController.navigate(R.id.FirstFragment);
+                    } else {
+                        // User does not have a username, navigate to UsernameFragment
+                        navController.navigate(R.id.UsernameFragment);
+                    }
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError error) {
+                    // Log error
+                }
+            });
+        } else {
+            // No user is signed in, navigate to UsernameFragment
+            navController.navigate(R.id.UsernameFragment);
+        }
 
         MaterialButton btnLogin = (MaterialButton) findViewById(R.id.btnLogin);
         MaterialButton btnRegister = (MaterialButton) findViewById(R.id.btnLogin2);
@@ -72,6 +107,8 @@ public class MainActivity extends AppCompatActivity {
         } else {
             Log.d(TAG, "GoogleSignInOptions is configured correctly.");
         }
+
+
 
         GoogleSignInClient mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
 

@@ -7,6 +7,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
@@ -15,8 +16,10 @@ import androidx.navigation.fragment.NavHostFragment;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.FirebaseApp;
-import com.google.firebase.firestore.DocumentReference;
-import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -30,26 +33,34 @@ public class UsernameFragment extends Fragment {
     ) {
         View view = inflater.inflate(R.layout.fragment_username, container, false);
 
-        FirebaseFirestore db = FirebaseFirestore.getInstance(FirebaseApp.getInstance(), "asia-southeast1");
+        FirebaseDatabase database = FirebaseDatabase.getInstance("https://commuterx-8854f-default-rtdb.asia-southeast1.firebasedatabase.app/");
+        DatabaseReference myRef = database.getReference("users");
 
         EditText usernameInput = view.findViewById(R.id.username_input);
         Button submitButton = view.findViewById(R.id.submit_button);
 
         submitButton.setOnClickListener(v -> {
+            Log.d("UsernameFragment", "Submit button clicked");
             String username = usernameInput.getText().toString();
+            Log.d("UsernameFragment", "Username: " + username);
 
-            // Create a new user with a username
+
             Map<String, Object> user = new HashMap<>();
             user.put("username", username);
 
-            // Add a new document with a generated ID
-            db.collection("users")
-                    .document() // Create a new document
-                    .set(user) // Set the document with the user map
+
+
+            myRef.push().setValue(user)
                     .addOnSuccessListener(new OnSuccessListener<Void>() {
                         @Override
                         public void onSuccess(Void aVoid) {
                             Toast.makeText(getActivity(), "Username saved successfully", Toast.LENGTH_SHORT).show();
+
+                            Bundle bundle = new Bundle();
+                            bundle.putString("username", username);
+
+                            NavHostFragment.findNavController(UsernameFragment.this)
+                                    .navigate(R.id.action_UsernameFragment_to_FirstFragment, bundle);
                         }
                     })
                     .addOnFailureListener(new OnFailureListener() {
@@ -58,10 +69,6 @@ public class UsernameFragment extends Fragment {
                             Toast.makeText(getActivity(), "Error adding document: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                         }
                     });
-
-            // Navigate to the FirstFragment
-            NavHostFragment.findNavController(UsernameFragment.this)
-                    .navigate(R.id.action_UsernameFragment_to_FirstFragment);
         });
 
         return view;

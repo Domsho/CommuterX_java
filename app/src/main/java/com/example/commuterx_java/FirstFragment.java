@@ -1,55 +1,65 @@
 package com.example.commuterx_java;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
-import androidx.navigation.fragment.NavHostFragment;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.QueryDocumentSnapshot;
-import com.google.firebase.firestore.QuerySnapshot;
-
-import com.example.commuterx_java.databinding.FragmentFirstBinding;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 public class FirstFragment extends Fragment {
 
-
-    private FragmentFirstBinding binding;
-    private TextView greetingText;
+    private static final String TAG = "FirstFragment";
 
     @Override
     public View onCreateView(
             @NonNull LayoutInflater inflater, ViewGroup container,
             Bundle savedInstanceState
     ) {
+        View view = inflater.inflate(R.layout.fragment_first, container, false);
 
-        binding = FragmentFirstBinding.inflate(inflater, container, false);
-        greetingText = binding.greetingText;
+        TextView greetingTextView = view.findViewById(R.id.greeting_text);
 
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        Bundle args = getArguments();
+        String username = null;
+        if (args != null) {
+            username = args.getString("username");
+        }
 
-        db.collection("users")
-                .get()
-                .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
-                    @Override
-                    public void onComplete(@NonNull Task<QuerySnapshot> task) {
-                        if (task.isSuccessful()) {
-                            for (QueryDocumentSnapshot document : task.getResult()) {
-                                String username = document.getString("username");
-                                greetingText.setText("Hi, " + username);
-                            }
-                        } else {
-                            // Handle error
-                        }
-                    }
-                });
+        if (username != null) {
+            greetingTextView.setText("Hi, " + username);
+        } else {
+            greetingTextView.setText("Hi");
+        }
 
-        return binding.getRoot();
+        // Initialize the Realtime Database
+        FirebaseDatabase database = FirebaseDatabase.getInstance();
+        DatabaseReference myRef = database.getReference("users");
 
+        // Add a ValueEventListener to the users reference
+        myRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                // This method is called once with the initial value and again
+                // whenever data at this location is updated.
+                String username = dataSnapshot.getValue(String.class);
+                greetingTextView.setText("Hi, " + username);
+            }
+
+            @Override
+            public void onCancelled(DatabaseError error) {
+                // Failed to read value
+                Log.w(TAG, "Failed to read value.", error.toException());
+            }
+        });
+
+        return view;
     }
 }
