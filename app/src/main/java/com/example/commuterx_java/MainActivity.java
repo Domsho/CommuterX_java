@@ -4,7 +4,8 @@ import static androidx.core.content.ContextCompat.startActivity;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-
+import com.facebook.login.LoginManager;
+import java.util.Arrays;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -15,7 +16,8 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
-
+import android.content.Context;
+import android.content.SharedPreferences;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
@@ -35,6 +37,16 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.facebook.CallbackManager;
+import com.facebook.FacebookCallback;
+import com.facebook.FacebookException;
+import com.facebook.login.LoginResult;
+import com.facebook.login.widget.LoginButton;
+import com.google.firebase.auth.AuthCredential;
+import com.google.firebase.auth.FacebookAuthProvider;
+import com.google.firebase.auth.FirebaseAuth;
+import com.facebook.AccessToken;
+import com.facebook.FacebookSdk;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -42,7 +54,8 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     private static final int RC_SIGN_IN = 2023;
     SignInButton signInButton;
-
+    private CallbackManager callbackManager;
+    private FirebaseAuth firebaseAuth;
     private NavController navController;
 
     @Override
@@ -62,16 +75,75 @@ public class MainActivity extends AppCompatActivity {
         TextView login_email = findViewById(R.id.registration_email);
         TextView login_password = findViewById(R.id.registration_password);
 
+        FacebookSdk.setClientToken("958247419075931");
+
+        FacebookSdk.sdkInitialize(getApplicationContext());
+
         String clientId = getString(R.string.client_id);
 
         mAuth = FirebaseAuth.getInstance();
 
         navController = Navigation.findNavController(this, R.id.nav_host_fragment);
 
+
+        AccessToken accessToken = AccessToken.getCurrentAccessToken();
+        boolean isLoggedIn = accessToken != null && !accessToken.isExpired();
+
+
+        callbackManager = CallbackManager.Factory.create();
+
+        LoginManager.getInstance().registerCallback(callbackManager,
+                new FacebookCallback<LoginResult>() {
+                    @Override
+                    public void onSuccess(LoginResult loginResult) {
+                        AccessToken accessToken = loginResult.getAccessToken();
+                    }
+
+                    @Override
+                    public void onCancel() {
+                        // App code
+                    }
+
+                    @Override
+                    public void onError(FacebookException exception) {
+                        // App code
+                    }
+                });
+
+        LoginButton loginButton = findViewById(R.id.login_button);
+        loginButton.setReadPermissions("email");
+
+        loginButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                LoginManager.getInstance().logInWithReadPermissions(MainActivity.this, Arrays.asList("public_profile", "email"));
+            }
+        });
+
+        LoginManager.getInstance().registerCallback(callbackManager,
+                new FacebookCallback<LoginResult>() {
+                    @Override
+                    public void onSuccess(LoginResult loginResult) {
+                        // Get the access token
+                        AccessToken accessToken = loginResult.getAccessToken();
+                        // Use the access token
+                    }
+
+                    @Override
+                    public void onCancel() {
+                        // Handle cancellation
+                    }
+
+                    @Override
+                    public void onError(FacebookException exception) {
+                        // Handle error
+                    }
+                });
+
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user != null) {
             String userId = user.getUid();
-            DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference("users");
+            DatabaseReference databaseReference = FirebaseDatabase.getInstance("https://commuterx-8854f-default-rtdb.asia-southeast1.firebasedatabase.app/").getReference();
             databaseReference.child(userId).addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(@NonNull DataSnapshot snapshot) {
@@ -175,12 +247,25 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void handleFacebookAccessToken(AccessToken token) {
+        AuthCredential credential = FacebookAuthProvider.getCredential(token.getToken());
+        firebaseAuth.signInWithCredential(credential)
+                .addOnCompleteListener(this, task -> {
+                    if (task.isSuccessful()) {
+                        // Sign in success
+                    } else {
+                        // Sign in failure
+                    }
+                });
+    }
+
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        callbackManager.onActivityResult(requestCode, resultCode, data);
         super.onActivityResult(requestCode, resultCode, data);
 
-        // Result returned from launching the Intent from GoogleSignInClient.getSignInIntent(...);
+
         if (requestCode == RC_SIGN_IN) {
             Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
             handleSignInResult(task);
@@ -204,6 +289,11 @@ public class MainActivity extends AppCompatActivity {
                 sendIdTokenToServer(idToken);
 
                 updateUI(account);
+
+                SharedPreferences sharedPreferences = getSharedPreferences("MySharedPref", MODE_PRIVATE);
+                SharedPreferences.Editor myEdit = sharedPreferences.edit();
+                myEdit.putString("uid", account.getId());
+                myEdit.apply();
 
                 // Start the home activity
                 Intent intent = new Intent(MainActivity.this, HomeActivity.class);

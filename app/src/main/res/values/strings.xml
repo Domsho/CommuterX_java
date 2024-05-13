@@ -1,13 +1,15 @@
 <resources>
     <string name="app_name">CommuterX_java</string>
-    <!-- Strings used for fragments for navigation -->
     <string name="first_fragment_label">First Fragment</string>
     <string name="second_fragment_label">Second Fragment</string>
     <string name="next">Next</string>
     <string name="previous">Previous</string>
     <string name="logo">Logo</string>
+    <string name="facebook_app_id">958247419075931</string>
+    <string name="fb_login_protocol_scheme">958247419075931</string>
+    <string name="facebook_client_token">4bb43a48b4390b47166ba8fda8745da1</string>
     <string name="client_id">862287981749-nnsis95nnlrr1sh1dbdp58mfdkjvjpfp.apps.googleusercontent.com</string>
-
+    <string name="mapbox_access_token">pk.eyJ1Ijoia2FudGNoaW4xMiIsImEiOiJjbHc0MzduZngwdnhpMmttdXpqbjh4OWVnIn0.jE9DG2nQU8ie9v0-fWb6fQ</string>
 
     <string name="lorem_ipsum">
         Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam in scelerisque sem. Mauris
