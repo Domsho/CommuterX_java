@@ -20,7 +20,9 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toTopOf="@+id/submit_button"
         app:layout_constraintVertical_chainStyle="packed"
-        android:layout_margin="16dp"/>
+        android:layout_margin="16dp"
+        android:maxLength="20"
+        android:singleLine="true" />
 
     <Button
         android:background="@drawable/rounded_button"

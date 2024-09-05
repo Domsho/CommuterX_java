@@ -46,6 +46,7 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
+    implementation ("com.google.android.material:material:1.4.0")
     implementation ("com.facebook.android:facebook-android-sdk:latest.release")
     implementation ("com.facebook.android:facebook-login:latest.release")
     implementation ("com.google.firebase:firebase-auth:latest.release")

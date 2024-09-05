@@ -33,7 +33,7 @@ public class FirstFragment extends Fragment {
     ) {
         View view = inflater.inflate(R.layout.fragment_first, container, false);
 
-        TextView greetingTextView = view.findViewById(R.id.greeting_text);
+        TextView greetingTextView = view.findViewById(R.id.greeting_text1);
 
         Bundle args = getArguments();
         String username = null;

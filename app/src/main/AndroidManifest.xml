@@ -40,9 +40,6 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".LocationComponentActivity"
-            />
-
         <meta-data
             android:name="com.facebook.sdk.ApplicationId"
             android:value="@string/facebook_app_id"/>
