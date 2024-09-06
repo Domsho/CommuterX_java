@@ -84,11 +84,13 @@
         app:layout_constraintTop_toBottomOf="@+id/outer_linear_layout"
         app:layout_constraintBottom_toTopOf="@+id/bottom_navigation">
 
-        <View
+        <com.mapbox.maps.MapView
+            android:id="@+id/mapView"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:background="@color/box_color1" />
+            app:mapbox_locationComponentEnabled="true"
+            app:mapbox_locationComponentPuckBearing="heading" />
 
         <View
             android:layout_marginTop="20dp"

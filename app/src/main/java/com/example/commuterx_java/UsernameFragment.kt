@@ -1,77 +1,82 @@
-package com.example.commuterx_java;
+package com.example.commuterx_java
 
-import android.app.Activity;
-import android.content.Context;
-import android.content.SharedPreferences;
-import android.os.Bundle;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.Toast;
+import android.app.Activity
+import android.content.Context
+import android.os.Bundle
+import android.util.Log
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.Button
+import android.widget.EditText
+import android.widget.Toast
+import androidx.fragment.app.Fragment
+import androidx.navigation.fragment.NavHostFragment
+import com.google.firebase.database.FirebaseDatabase
 
-import androidx.annotation.NonNull;
-import androidx.fragment.app.Fragment;
-import androidx.navigation.fragment.NavHostFragment;
+class UsernameFragment : Fragment() {
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        val view = inflater.inflate(R.layout.fragment_username, container, false)
 
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
+        val database =
+            FirebaseDatabase.getInstance("https://commuterx-8854f-default-rtdb.asia-southeast1.firebasedatabase.app/")
+        val myRef = database.getReference("users")
 
-import java.util.HashMap;
-import java.util.Map;
+        val usernameInput = view.findViewById<EditText>(R.id.username_input)
+        val submitButton = view.findViewById<Button>(R.id.submit_button)
+        submitButton.setBackgroundResource(R.drawable.rounded_button)
+        submitButton.invalidate()
 
-public class UsernameFragment extends Fragment {
-
-    @Override
-    public View onCreateView(
-            @NonNull LayoutInflater inflater, ViewGroup container,
-            Bundle savedInstanceState
-    ) {
-        View view = inflater.inflate(R.layout.fragment_username, container, false);
-
-        FirebaseDatabase database = FirebaseDatabase.getInstance("https://commuterx-8854f-default-rtdb.asia-southeast1.firebasedatabase.app/");
-        DatabaseReference myRef = database.getReference("users");
-
-        EditText usernameInput = view.findViewById(R.id.username_input);
-        Button submitButton = view.findViewById(R.id.submit_button);
-        submitButton.setBackgroundResource(R.drawable.rounded_button);
-        submitButton.invalidate();
-
-        Activity activity = getActivity();
+        val activity: Activity? = activity
         if (activity != null) {
-            SharedPreferences sharedPreferences = activity.getSharedPreferences("MySharedPref", Context.MODE_PRIVATE);
-            String uid = sharedPreferences.getString("uid", "");
+            val sharedPreferences =
+                activity.getSharedPreferences("MySharedPref", Context.MODE_PRIVATE)
+            val uid = sharedPreferences.getString("uid", "")
+            Log.d(TAG, "UID: $uid")
 
-            submitButton.setOnClickListener(v -> {
-                String username = usernameInput.getText().toString();
+            submitButton.setOnClickListener { v: View? ->
+                val username = usernameInput.text.toString()
+                if (username.isEmpty()) {
+                    Toast.makeText(getActivity(), "Username cannot be empty", Toast.LENGTH_SHORT)
+                        .show()
+                } else {
+                    Log.d(TAG, "Username: $username")
+                    // Save the username to the Firebase Realtime Database
+                }
 
-                Map<String, Object> user = new HashMap<>();
-                user.put("username", username);
+                val user: MutableMap<String, Any> = HashMap()
+                user["username"] = username
 
-                myRef.child(uid).setValue(user)
-                        .addOnSuccessListener(new OnSuccessListener<Void>() {
-                            @Override
-                            public void onSuccess(Void aVoid) {
-                                Toast.makeText(getActivity(), "Username saved successfully", Toast.LENGTH_SHORT).show();
-                            }
-                        })
-                        .addOnFailureListener(new OnFailureListener() {
-                            @Override
-                            public void onFailure(@NonNull Exception e) {
-                                Toast.makeText(getActivity(), "Error adding document: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                            }
-                        });
+                myRef.child(uid!!).setValue(user)
+                    .addOnSuccessListener {
+                        Toast.makeText(
+                            getActivity(),
+                            "Username saved successfully",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    .addOnFailureListener { e ->
+                        Toast.makeText(
+                            getActivity(),
+                            "Error adding document: " + e.message,
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
 
-                Bundle bundle = new Bundle();
-                bundle.putString("username", username);
-
-                NavHostFragment.findNavController(UsernameFragment.this)
-                        .navigate(R.id.action_UsernameFragment_to_FirstFragment, bundle);
-            });
+                val bundle = Bundle()
+                bundle.putString("username", username)
+                Log.d(TAG, "Username added to Bundle: $username")
+                NavHostFragment.findNavController(this@UsernameFragment)
+                    .navigate(R.id.action_UsernameFragment_to_FirstFragment, bundle)
+            }
         }
-        return view;
+        return view
+    }
+
+    companion object {
+        private const val TAG = "UsernameFragment"
     }
 }

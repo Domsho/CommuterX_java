@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.androidApplication)
     id("com.google.gms.google-services")
+    alias(libs.plugins.kotlinAndroid)
 }
 
 android {
@@ -33,6 +34,11 @@ android {
     buildFeatures {
         viewBinding = true
     }
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
+
+
 }
 
 dependencies {
@@ -43,6 +49,7 @@ dependencies {
     implementation(libs.navigation.fragment)
     implementation(libs.navigation.ui)
     implementation(libs.firebase.auth)
+    implementation(libs.core.ktx)
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
@@ -54,4 +61,7 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:32.8.1"))
     implementation ("com.google.android.gms:play-services-auth:19.2.0")
     implementation("com.google.firebase:firebase-auth")
+    implementation ("com.mapbox.navigationcore:android:3.3.1")
+    implementation ("com.mapbox.navigationcore:ui-components:3.3.1")
+    implementation ("com.mapbox.maps:android:11.6.0")
 }

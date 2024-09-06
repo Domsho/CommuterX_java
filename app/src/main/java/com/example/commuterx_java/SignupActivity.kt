@@ -1,28 +1,17 @@
-package com.example.commuterx_java;
+package com.example.commuterx_java
 
-import static androidx.core.content.ContextCompat.startActivity;
+import android.content.Intent
+import android.os.Bundle
+import android.text.TextUtils
+import android.view.View
+import android.widget.EditText
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.button.MaterialButton
+import com.google.firebase.auth.FirebaseAuth
 
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-
-import android.content.Intent;
-import android.os.Bundle;
-import android.text.TextUtils;
-import android.util.Log;
-import android.view.View;
-import android.widget.EditText;
-import android.widget.Toast;
-
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
-import com.google.android.material.button.MaterialButton;
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-
-public class SignupActivity extends AppCompatActivity {
-
-    FirebaseAuth mAuth;
+class SignupActivity : AppCompatActivity() {
+    var mAuth: FirebaseAuth? = null
 
     /*  @Override <--------------- UNCOMMENT IF U DON'T WANNA LOG IN
     public void onStart() {
@@ -34,54 +23,47 @@ public class SignupActivity extends AppCompatActivity {
             finish();
         }
     } */
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_signup)
+        mAuth = FirebaseAuth.getInstance()
+        val registration_email = findViewById<EditText>(R.id.registration_email)
+        val registration_password = findViewById<EditText>(R.id.registration_password)
+        val btnRegister = findViewById<View>(R.id.btnRegister) as MaterialButton
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_signup);
-        mAuth = FirebaseAuth.getInstance();
-        EditText registration_email = findViewById(R.id.registration_email);
-        EditText registration_password = findViewById(R.id.registration_password);
-        MaterialButton btnRegister = (MaterialButton) findViewById(R.id.btnRegister);
-
-        MaterialButton btnLogin2 = (MaterialButton) findViewById(R.id.btnLogin2);
+        val btnLogin2 = findViewById<View>(R.id.btnLogin2) as MaterialButton
 
 
-        btnRegister.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                String email, password;
-                email = String.valueOf(registration_email.getText());
-                password = String.valueOf(registration_password.getText());
+        btnRegister.setOnClickListener(View.OnClickListener {
+            val email = registration_email.text.toString()
+            val password = registration_password.text.toString()
 
-                if(TextUtils.isEmpty(email)) {
-                    Toast.makeText(SignupActivity.this, "Enter Email", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                if(TextUtils.isEmpty(password)) {
-                    Toast.makeText(SignupActivity.this, "Enter Password", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                mAuth.createUserWithEmailAndPassword(email, password)
-                        .addOnCompleteListener(new OnCompleteListener<AuthResult>() {
-                            @Override
-                            public void onComplete(@NonNull Task<AuthResult> task) {
-                                if (task.isSuccessful()) {
-                                    Toast.makeText(SignupActivity.this, "Account Created!",
-                                            Toast.LENGTH_SHORT).show();
-                                    Intent intent = new Intent(SignupActivity.this, MainActivity.class);
-                                    startActivity(intent);
-                                    finish();
-
-                                } else {
-                                    Toast.makeText(SignupActivity.this, "Account Creation Failed.",
-                                            Toast.LENGTH_SHORT).show();
-                                }
-                            }
-                        });
+            if (TextUtils.isEmpty(email)) {
+                Toast.makeText(this@SignupActivity, "Enter Email", Toast.LENGTH_SHORT).show()
+                return@OnClickListener
             }
-        });
+
+            if (TextUtils.isEmpty(password)) {
+                Toast.makeText(this@SignupActivity, "Enter Password", Toast.LENGTH_SHORT).show()
+                return@OnClickListener
+            }
+            mAuth!!.createUserWithEmailAndPassword(email, password)
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        Toast.makeText(
+                            this@SignupActivity, "Account Created!",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        val intent = Intent(this@SignupActivity, MainActivity::class.java)
+                        startActivity(intent)
+                        finish()
+                    } else {
+                        Toast.makeText(
+                            this@SignupActivity, "Account Creation Failed.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+        })
     }
 }
