@@ -7,8 +7,7 @@
     android:orientation="vertical"
     android:gravity="center_horizontal"
     android:padding="16dp"
-    android:background="#fdfefe"
-    tools:context=".SignupActivity">
+    android:background="#121212">
 
     <ImageView
         android:id="@+id/logo"
@@ -22,12 +21,12 @@
         android:layout_width="300dp"
         android:layout_height="wrap_content"
         android:id="@+id/registration_email"
-        android:background="#33C0C0C0"
+        android:background="@drawable/edit_text_background"
         android:layout_below="@+id/logo"
         android:fontFamily="@font/nexa_font_family"
         android:hint="Enter Email"
         android:textColor="@color/white"
-        android:textColorHint="#20344f"
+        android:textColorHint="@color/white"
         android:padding="15dp"
         android:layout_centerHorizontal="true"
         android:drawablePadding="10dp"
@@ -36,12 +35,12 @@
         android:layout_width="300dp"
         android:layout_height="wrap_content"
         android:id="@+id/registration_password"
-        android:background="#33C0C0C0"
+        android:background="@drawable/edit_text_background"
         android:layout_below="@+id/registration_email"
         android:fontFamily="@font/nexa_font_family"
         android:hint="Enter Password"
         android:textColor="#000000"
-        android:textColorHint="#20344f"
+        android:textColorHint="@color/white"
         android:layout_margin="10dp"
         android:padding="15dp"
         android:layout_centerHorizontal="true"
@@ -55,10 +54,10 @@
         android:layout_below="@+id/registration_password"
         android:text="Login"
         android:fontFamily="@font/nexa_font_family"
-        android:padding="10dp"
-        android:textColor="#fdfefe"
-        android:backgroundTint="#0000FF"
-        android:elevation="30dp"
+        android:textColor="#FFFFFF"
+        app:backgroundTint="#2196F3"
+        app:cornerRadius="28dp"
+        android:elevation="4dp"
         android:layout_centerHorizontal="true"
         android:layout_marginTop="10dp"
         />
@@ -70,12 +69,12 @@
         android:layout_below="@+id/btnLogin"
         android:fontFamily="@font/nexa_font_family"
         android:text="Register"
-        android:padding="10dp"
-        android:textColor="#fdfefe"
-        android:backgroundTint="#0000FF"
-        android:elevation="30dp"
+        android:textColor="#FFFFFF"
+        app:backgroundTint="#2196F3"
+        app:cornerRadius="28dp"
+        android:elevation="4dp"
         android:layout_centerHorizontal="true"
-
+        android:layout_marginTop="10dp"
         />
 
     <LinearLayout
@@ -114,24 +113,55 @@
             android:background="@android:color/darker_gray"/>
     </LinearLayout>
 
-    <com.google.android.gms.common.SignInButton
-        android:id="@+id/sign_in_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/linearlayout"
-        android:layout_marginTop="20dp"
-        android:layout_centerHorizontal="true" />
+    <com.google.android.material.button.MaterialButton
+    android:id="@+id/sign_in_button"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_below="@id/linearlayout"
+    android:layout_marginTop="24dp"
+    android:text="Continue with Google"
+    android:textColor="@android:color/black"
+    android:textAllCaps="false"
+    app:backgroundTint="@color/button_background_color"
+    app:cornerRadius="4dp"
+    app:icon="@drawable/ic_google"
+    app:iconGravity="start"
+    app:iconTint="@null"
+    app:iconPadding="8dp"
+    android:stateListAnimator="@animator/button_state_list_anim"
+    android:elevation="4dp"
+    app:strokeColor="#DADCE0"
+    app:strokeWidth="1dp" />
 
-
-    <com.facebook.login.widget.LoginButton
-        android:id="@+id/login_button"
-        android:layout_width="wrap_content"
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/custom_facebook_button"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
         android:layout_below="@id/sign_in_button"
+        android:layout_marginTop="16dp"
+        android:text="Continue with Facebook"
+        android:textColor="@android:color/white"
+        android:textAllCaps="false"
+        app:backgroundTint="#1877F2"
+        app:cornerRadius="4dp"
+        app:icon="@drawable/ic_facebook"
+        app:iconGravity="start"
+        app:iconTint="@android:color/white"
+        app:iconPadding="8dp"
+        android:stateListAnimator="@animator/button_state_list_anim"
+        android:elevation="4dp" />
+
+    <TextView
+        android:id="@+id/help_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/custom_facebook_button"
+        android:layout_centerHorizontal="true"
         android:layout_marginTop="30dp"
-        android:layout_marginBottom="30dp"
-        android:layout_centerHorizontal="true" />
+        android:text="Need help signing in?"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp"
+        android:fontFamily="@font/nexa_font_family" />
 
     <FrameLayout
         android:id="@+id/fragment_container"

@@ -1,30 +1,49 @@
 [versions]
 agp = "8.6.0"
+android = "3.3.1"
+androidVersion = "11.6.0"
+facebookAndroidSdk = "latest.release"
+firebaseAuthVersion = "latest.release"
+firebaseBom = "33.2.0"
+firebaseDatabase = "21.0.0"
 junit = "4.13.2"
 junitVersion = "1.1.5"
 espressoCore = "3.5.1"
 appcompat = "1.6.1"
 material = "1.11.0"
 constraintlayout = "2.1.4"
+materialVersion = "1.4.0"
 navigationFragment = "2.6.0"
 navigationUi = "2.6.0"
 firebaseAuth = "22.3.1"
 googleServices = "4.4.1"
 kotlin = "2.0.20"
 coreKtx = "1.13.1"
+playServicesAuth = "21.2.0"
 
 [libraries]
+android = { module = "com.mapbox.navigationcore:android", version.ref = "android" }
+facebook-android-sdk = { module = "com.facebook.android:facebook-android-sdk", version.ref = "facebookAndroidSdk" }
+facebook-login = { module = "com.facebook.android:facebook-login", version.ref = "facebookAndroidSdk" }
+firebase-auth-vlatestrelease = { module = "com.google.firebase:firebase-auth", version.ref = "firebaseAuthVersion" }
+firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
+firebase-database = { module = "com.google.firebase:firebase-database", version.ref = "firebaseDatabase" }
+google-firebase-auth = { module = "com.google.firebase:firebase-auth" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+maps-android = { module = "com.mapbox.maps:android", version.ref = "androidVersion" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
+material-v140 = { module = "com.google.android.material:material", version.ref = "materialVersion" }
 navigation-fragment = { group = "androidx.navigation", name = "navigation-fragment", version.ref = "navigationFragment" }
 navigation-ui = { group = "androidx.navigation", name = "navigation-ui", version.ref = "navigationUi" }
 firebase-auth = { group = "com.google.firebase", name = "firebase-auth", version.ref = "firebaseAuth" }
 google-services = { group = "com.google.gms", name = "google-services", version.ref = "googleServices" }
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "playServicesAuth" }
+ui-components = { module = "com.mapbox.navigationcore:ui-components", version.ref = "android" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

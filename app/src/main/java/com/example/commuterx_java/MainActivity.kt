@@ -35,12 +35,13 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import com.facebook.FacebookSdk
+
 
 class MainActivity : AppCompatActivity() {
     var mAuth: FirebaseAuth? = null
     var signInButton: SignInButton? = null
     private var callbackManager: CallbackManager? = null
-    private val firebaseAuth: FirebaseAuth? = null
     private var navController: NavController? = null
 
     public override fun onStart() {
@@ -54,13 +55,11 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
+        FacebookSdk.sdkInitialize(applicationContext)
         val login_email = findViewById<TextView>(R.id.registration_email)
         val login_password = findViewById<TextView>(R.id.registration_password)
 
         setClientToken("958247419075931")
-
-        sdkInitialize(applicationContext)
 
         val clientId = getString(R.string.client_id)
 
@@ -73,49 +72,35 @@ class MainActivity : AppCompatActivity() {
         val isLoggedIn = accessToken != null && !accessToken.isExpired
 
 
-        callbackManager = create()
+        callbackManager = CallbackManager.Factory.create()
 
         LoginManager.getInstance().registerCallback(callbackManager,
             object : FacebookCallback<LoginResult> {
                 override fun onSuccess(loginResult: LoginResult) {
-                    val accessToken = loginResult.accessToken
+                    Log.d(TAG, "Facebook login success")
+                    handleFacebookAccessToken(loginResult.accessToken)
                 }
 
                 override fun onCancel() {
-                    // App code
+                    Log.d(TAG, "Facebook login cancelled")
                 }
 
                 override fun onError(exception: FacebookException) {
-                    // App code
+                    Log.e(TAG, "Facebook login error", exception)
+                    Toast.makeText(this@MainActivity, "Facebook login failed: ${exception.message}", Toast.LENGTH_SHORT).show()
+                    updateUI(null)
                 }
             })
 
-        val loginButton = findViewById<LoginButton>(R.id.login_button)
-        loginButton.setReadPermissions("email")
+        val customFacebookButton = findViewById<MaterialButton>(R.id.custom_facebook_button)
 
-        loginButton.setOnClickListener {
+        customFacebookButton.setOnClickListener {
             LoginManager.getInstance().logInWithReadPermissions(
                 this@MainActivity,
                 mutableListOf("public_profile", "email")
             )
         }
 
-        LoginManager.getInstance().registerCallback(callbackManager,
-            object : FacebookCallback<LoginResult> {
-                override fun onSuccess(loginResult: LoginResult) {
-                    // Get the access token
-                    val accessToken = loginResult.accessToken
-                    // Use the access token
-                }
-
-                override fun onCancel() {
-                    // Handle cancellation
-                }
-
-                override fun onError(exception: FacebookException) {
-                    // Handle error
-                }
-            })
 
         val user = FirebaseAuth.getInstance().currentUser
         if (user != null) {
@@ -162,7 +147,7 @@ class MainActivity : AppCompatActivity() {
             this, gso
         )
 
-        val signInButton = findViewById<SignInButton>(R.id.sign_in_button)
+        val signInButton = findViewById<MaterialButton>(R.id.sign_in_button)
         signInButton.setOnClickListener {
             val signInIntent = mGoogleSignInClient.signInIntent
             startActivityForResult(signInIntent, RC_SIGN_IN)
@@ -181,8 +166,8 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this@MainActivity, "Enter Password", Toast.LENGTH_SHORT).show()
                 return@OnClickListener
             }
-            mAuth!!.signInWithEmailAndPassword(email, password)
-                .addOnCompleteListener { task ->
+            mAuth?.signInWithEmailAndPassword(email, password)
+                ?.addOnCompleteListener { task ->
                     if (task.isSuccessful) {
                         Log.d(TAG, "signInWithEmail:success")
                         val user = mAuth!!.currentUser
@@ -216,12 +201,19 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleFacebookAccessToken(token: AccessToken) {
         val credential = FacebookAuthProvider.getCredential(token.token)
-        firebaseAuth!!.signInWithCredential(credential)
-            .addOnCompleteListener(this) { task: Task<AuthResult?> ->
+        mAuth?.signInWithCredential(credential)
+            ?.addOnCompleteListener(this) { task ->
                 if (task.isSuccessful) {
-                    // Sign in success
+                    // Sign in success, update UI with the signed-in user's information
+                    Log.d(TAG, "signInWithCredential:success")
+                    val user = mAuth?.currentUser
+                    updateUI(user)
                 } else {
-                    // Sign in failure
+                    // If sign in fails, display a message to the user.
+                    Log.w(TAG, "signInWithCredential:failure", task.exception)
+                    Toast.makeText(this@MainActivity, "Authentication failed.",
+                        Toast.LENGTH_SHORT).show()
+                    updateUI(null)
                 }
             }
     }
@@ -276,19 +268,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun updateUI(user: Any?) {
+        val signInButton = findViewById<View>(R.id.sign_in_button)  // Use View as the base type
+        val userEmail = findViewById<TextView>(R.id.registration_email)
 
-    private fun updateUI(account: GoogleSignInAccount?) {
-        // Add a null check here
-        if (signInButton != null) {
-            if (account != null) {
-                Log.d(TAG, "updateUI:account: $account")
-                signInButton!!.visibility = View.GONE
-                val userEmail = findViewById<TextView>(R.id.registration_email)
-                userEmail.text = account.email
+        when (user) {
+            is FirebaseUser, is GoogleSignInAccount -> {
+                signInButton.visibility = View.GONE
+                userEmail.text = when(user) {
+                    is FirebaseUser -> user.email
+                    is GoogleSignInAccount -> user.email
+                    else -> ""
+                }
                 userEmail.visibility = View.VISIBLE
-            } else {
-                signInButton!!.visibility = View.VISIBLE
-                val userEmail = findViewById<TextView>(R.id.registration_email)
+            }
+            else -> {
+                signInButton.visibility = View.VISIBLE
                 userEmail.visibility = View.GONE
             }
         }
@@ -302,22 +297,6 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    private fun updateUI(user: FirebaseUser?) {
-        // Add a null check here
-        if (signInButton != null) {
-            if (user != null) {
-                Log.d(TAG, "updateUI:user: $user")
-                signInButton!!.visibility = View.GONE
-                val userEmail = findViewById<TextView>(R.id.registration_email)
-                userEmail.text = user.email
-                userEmail.visibility = View.VISIBLE
-            } else {
-                signInButton!!.visibility = View.VISIBLE
-                val userEmail = findViewById<TextView>(R.id.registration_email)
-                userEmail.visibility = View.GONE
-            }
-        }
-    }
 
     companion object {
         private const val TAG = "MainActivity"
