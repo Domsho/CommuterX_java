@@ -63,7 +63,7 @@ dependencies {
     implementation(libs.google.firebase.auth)
     implementation (libs.android)
     implementation (libs.ui.components)
-    implementation("com.mapbox.maps:android:11.6.0")
+    implementation("com.mapbox.maps:android:11.6.1")
     implementation("com.facebook.android:facebook-android-sdk:latest.release")
     implementation ("com.mapbox.search:mapbox-search-android:2.3.0")
     implementation ("com.mapbox.search:mapbox-search-android-ui:2.3.0")

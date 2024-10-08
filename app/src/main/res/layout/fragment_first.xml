@@ -85,7 +85,16 @@
                 app:mapbox_locationComponentEnabled="true"
                 app:mapbox_locationComponentPuckBearing="heading"
                 app:mapbox_logoEnabled="false"
-                app:mapbox_attributionEnabled="false" />
+                app:mapbox_attributionEnabled="false"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <View
+                android:id="@+id/mapOverlay"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@android:color/transparent" />
+
 
             <androidx.appcompat.widget.SearchView
                 android:id="@+id/searchView"
@@ -100,7 +109,9 @@
                 app:queryHint="Search location"
                 app:queryBackground="@null"
                 app:submitBackground="@null"
-                android:theme="@style/SearchViewStyle" />
+                android:theme="@style/SearchViewStyle"
+                android:clickable="true"
+                android:focusable="true" />
 
             <com.mapbox.search.ui.view.SearchResultsView
                 android:id="@+id/searchResultsView"

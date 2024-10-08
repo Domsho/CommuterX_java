@@ -2,6 +2,7 @@ package com.example.commuterx_java
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
@@ -54,6 +55,13 @@ import com.mapbox.search.SearchSelectionCallback
 import com.mapbox.search.SearchSuggestionsCallback
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.navigation.fragment.findNavController
+import com.mapbox.maps.extension.style.atmosphere.generated.atmosphere
+import com.mapbox.maps.extension.style.terrain.generated.terrain
+import com.mapbox.maps.extension.style.expressions.dsl.generated.interpolate
+import com.mapbox.maps.extension.style.expressions.generated.Expression
+import com.mapbox.maps.MapboxMap
+
 
 
 
@@ -70,6 +78,8 @@ class FirstFragment : Fragment() {
     private lateinit var searchView: androidx.appcompat.widget.SearchView
     private lateinit var searchResultsView: SearchResultsView
     private lateinit var searchEngine: SearchEngine
+    private lateinit var mapOverlay: View
+    private lateinit var mapboxMap: com.mapbox.maps.MapboxMap
 
     interface PermissionsListener {
         fun onPermissionsGranted()
@@ -130,6 +140,7 @@ class FirstFragment : Fragment() {
         recenterButton = view.findViewById(R.id.recenter_button)
         searchView = view.findViewById<androidx.appcompat.widget.SearchView>(R.id.searchView)
         searchResultsView = view.findViewById(R.id.searchResultsView)
+        mapOverlay = view.findViewById(R.id.mapOverlay)
 
         val accessToken = getString(R.string.mapbox_access_token)
 
@@ -142,8 +153,40 @@ class FirstFragment : Fragment() {
         setupPermissions()
         setupSearch()
 
+        mapOverlay.setOnClickListener {
+            Log.d("FirstFragment", "Map overlay clicked")
+            navigateToFullScreenMap()
+        }
+
+        searchView.setOnClickListener {
+            Log.d("FirstFragment", "SearchView clicked")
+            navigateToFullScreenMap()
+        }
+
+        searchView.setOnQueryTextFocusChangeListener { v, hasFocus ->
+            if (hasFocus) {
+                navigateToFullScreenMap()
+            }
+        }
+
+        mapView.setOnClickListener {
+            Log.d("FirstFragment", "MapView clicked")
+            navigateToFullScreenMap()
+        }
+
 
         return view
+    }
+
+    private fun navigateToFullScreenMap() {
+        Log.d("FirstFragment", "Attempting to navigate to full screen map")
+        try {
+            val intent = Intent(requireContext(), FullScreenMapActivity::class.java)
+            startActivity(intent)
+            Log.d("FirstFragment", "Navigation successful")
+        } catch (e: Exception) {
+            Log.e("FirstFragment", "Navigation failed", e)
+        }
     }
 
     private fun setupSearch() {
@@ -345,31 +388,33 @@ class FirstFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        mapView = view.findViewById(R.id.mapView)
+        mapboxMap = mapView.getMapboxMap()
         setupMapbox()
     }
 
     private fun setupMapbox() {
-        mapView.getMapboxMap().loadStyleUri(Style.MAPBOX_STREETS) {
-            Log.d("Mapbox", "Style loaded successfully.")
+        mapView.getMapboxMap().loadStyleUri(Style.MAPBOX_STREETS) { style ->
             mapView.scalebar.enabled = false
-            enableLocationTracking()
+            setupMapboxView(style)
         }
     }
 
-    private fun enableLocationComponent() {
-        if (ContextCompat.checkSelfPermission(
-                requireContext(),
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            mapView.location.updateSettings {
-                enabled = true
-                pulsingEnabled = true
-            }
-        } else {
-            // Request permissions
-        }
+    private fun setupMapboxView(style: Style) {
+        // Set camera to focus on North America
+        val cameraPosition = CameraOptions.Builder()
+            .center(Point.fromLngLat(-100.0, 40.0))
+            .zoom(2.5)
+            .pitch(50.0)
+            .bearing(0.0)
+            .build()
+        mapboxMap.setCamera(cameraPosition)
+
+        // Enable gestures
+        mapView.gestures.pitchEnabled = true
     }
+
+
 
     private fun centerOnUserLocation() {
         locationUpdateListener = OnIndicatorPositionChangedListener { point ->
