@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="SearchViewStyle" parent="Widget.AppCompat.SearchView">
-        <item name="android:textColorHint">#80000000</item> <!-- 50% transparent black for hint text -->
-        <item name="android:textColor">#000000</item> <!-- Black for entered text -->
-        <item name="android:textCursorDrawable">@null</item> <!-- Use default cursor color -->
-        <item name="android:searchIcon">@null</item> <!-- Remove search icon -->
-        <item name="android:closeIcon">@null</item> <!-- Remove close icon -->
-        <item name="android:paddingStart">16dp</item> <!-- Add some padding to the start -->
-        <item name="android:paddingEnd">16dp</item> <!-- Add some padding to the end -->
+        <item name="queryBackground">@null</item>
+        <item name="submitBackground">@null</item>
+        <item name="searchIcon">@null</item>
+        <item name="closeIcon">@null</item>
+        <item name="android:textColorHint">#808080</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:inputType">text</item>
+        <item name="android:imeOptions">actionSearch</item>
+        <item name="android:maxLines">1</item>
     </style>
 </resources>

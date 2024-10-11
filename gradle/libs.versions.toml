@@ -1,5 +1,5 @@
 [versions]
-agp = "8.6.0"
+agp = "8.7.0"
 android = "3.3.1"
 androidVersion = "11.6.0"
 facebookAndroidSdk = "latest.release"

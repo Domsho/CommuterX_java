@@ -19,7 +19,7 @@ class SearchResultsAdapter(private val onItemClick: (SearchSuggestion) -> Unit) 
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(parent.context)
-            .inflate(android.R.layout.simple_list_item_1, parent, false)
+            .inflate(R.layout.item_search_suggestion, parent, false)
         return ViewHolder(view)
     }
 
@@ -31,10 +31,12 @@ class SearchResultsAdapter(private val onItemClick: (SearchSuggestion) -> Unit) 
     override fun getItemCount(): Int = searchSuggestions.size
 
     inner class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        private val textView: TextView = itemView.findViewById(android.R.id.text1)
+        private val titleTextView: TextView = itemView.findViewById(R.id.suggestion_title)
+        private val addressTextView: TextView = itemView.findViewById(R.id.suggestion_address)
 
         fun bind(suggestion: SearchSuggestion) {
-            textView.text = suggestion.name
+            titleTextView.text = suggestion.name
+            addressTextView.text = suggestion.address?.formattedAddress() ?: ""
             itemView.setOnClickListener { onItemClick(suggestion) }
         }
     }

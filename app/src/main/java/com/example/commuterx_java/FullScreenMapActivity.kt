@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SearchView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.mapbox.geojson.Point
@@ -38,6 +39,8 @@ class FullScreenMapActivity : AppCompatActivity() {
         // Initialize map
         mapView.getMapboxMap().loadStyleUri(Style.MAPBOX_STREETS)
 
+
+
         // Initialize search engine
         searchEngine = SearchEngine.createSearchEngine(SearchEngineSettings())
 
@@ -58,6 +61,7 @@ class FullScreenMapActivity : AppCompatActivity() {
             override fun onQueryTextChange(newText: String?): Boolean {
                 if (newText.isNullOrEmpty()) {
                     searchResultsRecyclerView.visibility = View.GONE
+                    searchView.background = ContextCompat.getDrawable(this@FullScreenMapActivity, R.drawable.search_background)
                 } else {
                     performSearch(newText)
                 }
@@ -80,6 +84,7 @@ class FullScreenMapActivity : AppCompatActivity() {
                         )
                     }
                     searchResultsRecyclerView.visibility = View.GONE
+                    searchView.background = ContextCompat.getDrawable(this@FullScreenMapActivity, R.drawable.search_background)
                 }
 
                 override fun onResults(
@@ -116,6 +121,7 @@ class FullScreenMapActivity : AppCompatActivity() {
                 runOnUiThread {
                     searchResultsAdapter.updateResults(suggestions)
                     searchResultsRecyclerView.visibility = View.VISIBLE
+                    searchView.background = ContextCompat.getDrawable(this@FullScreenMapActivity, R.drawable.search_background_top)
                 }
             }
 
