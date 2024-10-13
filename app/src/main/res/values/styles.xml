@@ -5,10 +5,41 @@
         <item name="submitBackground">@null</item>
         <item name="searchIcon">@null</item>
         <item name="closeIcon">@null</item>
+        <item name="android:textColor">@android:color/white</item>
         <item name="android:textColorHint">#808080</item>
         <item name="android:textSize">16sp</item>
         <item name="android:inputType">text</item>
         <item name="android:imeOptions">actionSearch</item>
         <item name="android:maxLines">1</item>
     </style>
+
+    <style name="ShapeAppearanceOverlay.TopRounded" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSizeTopRight">16dp</item>
+        <item name="cornerSizeTopLeft">16dp</item>
+    </style>
+
+    <style name="DarkSearchViewStyle" parent="Widget.AppCompat.SearchView">
+        <item name="android:textColor">@android:color/white</item>
+        <item name="android:textColorHint">#CCCCCC</item>
+        <item name="android:textColorPrimary">@android:color/white</item>
+        <item name="android:textColorSecondary">@android:color/white</item>
+        <item name="queryBackground">@null</item>
+        <item name="searchIcon">@null</item>
+        <item name="closeIcon">@drawable/ic_arrow_back</item>
+        <item name="searchHintIcon">@null</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingEnd">16dp</item>
+    </style>
+
+    <style name="SearchResultItemStyle">
+        <item name="android:textColor">@android:color/white</item>
+        <item name="android:background">#FF121212</item>
+        <item name="android:padding">16dp</item>
+    </style>
+
+    <style name="WhiteCursorStyle" parent="Widget.AppCompat.EditText">
+        <item name="android:textCursorDrawable">@drawable/white_cursor</item>
+    </style>
+
 </resources>

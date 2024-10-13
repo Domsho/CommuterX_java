@@ -35,32 +35,19 @@ import com.mapbox.maps.ImageHolder
 import com.mapbox.maps.MapView
 import com.mapbox.maps.Style
 import com.mapbox.maps.plugin.LocationPuck2D
-import com.mapbox.maps.plugin.annotation.annotations
-import com.mapbox.maps.plugin.annotation.generated.PointAnnotationOptions
-import com.mapbox.maps.plugin.annotation.generated.createPointAnnotationManager
 import com.mapbox.maps.plugin.gestures.gestures
 import com.mapbox.maps.plugin.locationcomponent.OnIndicatorPositionChangedListener
 import com.mapbox.maps.plugin.locationcomponent.location
 import com.mapbox.maps.plugin.scalebar.scalebar
-import com.mapbox.search.ResponseInfo
 import com.mapbox.search.SearchEngine
 import com.mapbox.search.SearchEngineSettings
-import com.mapbox.search.result.SearchResult
-import com.mapbox.search.result.SearchSuggestion
-import com.mapbox.search.ui.view.SearchResultsView
-import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.mapbox.search.SearchCallback
-import com.mapbox.search.SearchOptions
-import com.mapbox.search.SearchSelectionCallback
-import com.mapbox.search.SearchSuggestionsCallback
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import androidx.navigation.fragment.findNavController
-import com.mapbox.maps.extension.style.atmosphere.generated.atmosphere
-import com.mapbox.maps.extension.style.terrain.generated.terrain
-import com.mapbox.maps.extension.style.expressions.dsl.generated.interpolate
-import com.mapbox.maps.extension.style.expressions.generated.Expression
-import com.mapbox.maps.MapboxMap
+import android.location.LocationManager
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
+import android.provider.Settings
+import androidx.appcompat.app.AlertDialog
 
 
 
@@ -73,13 +60,24 @@ class FirstFragment : Fragment() {
     private lateinit var mapView: MapView
     private lateinit var permissionsManager: PermissionsManager
     private var isLocationInitialized = false
-    private lateinit var recenterButton: FloatingActionButton
     private var locationUpdateListener: OnIndicatorPositionChangedListener? = null
     private lateinit var searchView: androidx.appcompat.widget.SearchView
-    private lateinit var searchResultsView: SearchResultsView
     private lateinit var searchEngine: SearchEngine
     private lateinit var mapOverlay: View
     private lateinit var mapboxMap: com.mapbox.maps.MapboxMap
+    private lateinit var connectivityManager: ConnectivityManager
+    private var isLocationTrackingEnabled = false
+
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            // Handle the network becoming available
+        }
+
+        override fun onLost(network: Network) {
+            // Handle the network being lost
+        }
+    }
+
 
     interface PermissionsListener {
         fun onPermissionsGranted()
@@ -137,20 +135,18 @@ class FirstFragment : Fragment() {
 
         sharedPreferences = requireActivity().getSharedPreferences("MySharedPref", Context.MODE_PRIVATE)
         mapView = view.findViewById(R.id.mapView)
-        recenterButton = view.findViewById(R.id.recenter_button)
         searchView = view.findViewById<androidx.appcompat.widget.SearchView>(R.id.searchView)
-        searchResultsView = view.findViewById(R.id.searchResultsView)
         mapOverlay = view.findViewById(R.id.mapOverlay)
 
-        val accessToken = getString(R.string.mapbox_access_token)
+        connectivityManager = requireContext().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        registerNetworkCallback()
+        setupPermissions()
 
         val settings = SearchEngineSettings(null)
         searchEngine = SearchEngine.createSearchEngineWithBuiltInDataProviders(settings)
 
         setupMapbox()
-        setupRecenterButton()
         setupFirebase(view)
-        setupPermissions()
         setupSearch()
 
         mapOverlay.setOnClickListener {
@@ -179,210 +175,50 @@ class FirstFragment : Fragment() {
     }
 
     private fun navigateToFullScreenMap() {
-        Log.d("FirstFragment", "Attempting to navigate to full screen map")
-        try {
-            val intent = Intent(requireContext(), FullScreenMapActivity::class.java)
-            startActivity(intent)
-            Log.d("FirstFragment", "Navigation successful")
-        } catch (e: Exception) {
-            Log.e("FirstFragment", "Navigation failed", e)
-        }
+        val intent = Intent(requireContext(), FullScreenMapActivity::class.java)
+        startActivity(intent)
     }
 
     private fun setupSearch() {
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean {
-                query?.let { performSearch(it) }
+                navigateToFullScreenMap()
                 return true
             }
 
             override fun onQueryTextChange(newText: String?): Boolean {
-                newText?.let {
-                    if (it.length >= 3) { // Only search if there are at least 3 characters
-                        performSearch(it)
-                    } else {
-                        // Clear suggestions if text is too short
-                        searchResultsView.visibility = View.GONE
-                    }
+                if (newText?.isNotEmpty() == true) {
+                    navigateToFullScreenMap()
                 }
                 return true
             }
         })
-    }
 
-    private fun performSearch(query: String) {
-        if (!this::searchEngine.isInitialized) {
-            Log.e("FirstFragment", "SearchEngine not initialized")
-            return
+        searchView.setOnClickListener {
+            navigateToFullScreenMap()
         }
 
-        val options = SearchOptions.Builder()
-            .limit(5)
+    }
+
+    private fun registerNetworkCallback() {
+        val networkRequest = NetworkRequest.Builder()
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
             .build()
-
-        searchEngine.search(query, options, object : SearchSuggestionsCallback {
-            override fun onSuggestions(suggestions: List<SearchSuggestion>, responseInfo: ResponseInfo) {
-                if (suggestions.isNotEmpty()) {
-                    // Handle suggestions
-                    activity?.runOnUiThread {
-                        handleSearchSuggestions(suggestions)
-                    }
-                }
-            }
-
-            override fun onError(e: Exception) {
-                Log.e("Search", "Error: ${e.message}")
-            }
-        })
+        connectivityManager.registerNetworkCallback(networkRequest, networkCallback)
     }
 
-    private fun handleSearchSuggestions(suggestions: List<SearchSuggestion>) {
-        if (suggestions.isNotEmpty()) {
-            val firstSuggestion = suggestions[0]
-
-            activity?.runOnUiThread {
-                updateSearchSuggestionsUI(suggestions)
-            }
-
-            searchEngine.select(firstSuggestion, object : SearchSelectionCallback {
-
-                override fun onResult(suggestion: SearchSuggestion, result: SearchResult, responseInfo: ResponseInfo) {
-                    handleSearchResult(result)
+    private fun checkLocationServices() {
+        val locationManager = requireContext().getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            // Show a dialog to the user asking them to enable location services
+            AlertDialog.Builder(requireContext())
+                .setMessage("Location services are disabled. Would you like to enable them?")
+                .setPositiveButton("Yes") { _, _ ->
+                    startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
                 }
-
-                override fun onResults(
-                    suggestion: SearchSuggestion,
-                    results: List<SearchResult>,
-                    responseInfo: ResponseInfo
-                ) {
-                    if (results.isNotEmpty()) {
-                        handleSearchResult(results[0])
-                    }
-                }
-
-                override fun onSuggestions(
-                    suggestions: List<SearchSuggestion>,
-                    responseInfo: ResponseInfo
-                ) {
-                    if (suggestions.isNotEmpty()) {
-                        // Handle the suggestions
-                        activity?.runOnUiThread {
-                            // Update UI with suggestions
-                            updateSearchSuggestionsUI(suggestions)
-                        }
-                    } else {
-                        // Handle case when no suggestions are available
-                        Log.d("Search", "No suggestions available")
-                    }
-                }
-
-                override fun onError(e: Exception) {
-                    Log.e("Search", "Error selecting suggestion: ${e.message}")
-                }
-
-                // Add any other methods that might be required by your specific SearchSelectionCallback interface
-            })
+                .setNegativeButton("No", null)
+                .show()
         }
-    }
-
-    private fun updateSearchSuggestionsUI(suggestions: List<SearchSuggestion>) {
-        searchResultsView.removeAllViews()
-
-        for (suggestion in suggestions) {
-            val suggestionView = layoutInflater.inflate(R.layout.item_search_suggestion, searchResultsView, false)
-
-            val titleTextView = suggestionView.findViewById<TextView>(R.id.suggestion_title)
-            val addressTextView = suggestionView.findViewById<TextView>(R.id.suggestion_address)
-
-            titleTextView.text = suggestion.name
-            addressTextView.text = suggestion.address?.formattedAddress() ?: ""
-
-            suggestionView.setOnClickListener {
-                handleSuggestionClick(suggestion)
-            }
-
-            searchResultsView.addView(suggestionView)
-        }
-
-        searchResultsView.visibility = View.VISIBLE
-    }
-
-
-
-
-    private fun handleSuggestionClick(suggestion: SearchSuggestion) {
-        searchEngine.select(suggestion, object : SearchSelectionCallback {
-            override fun onResult(
-                suggestion: SearchSuggestion,
-                result: SearchResult,
-                responseInfo: ResponseInfo
-            ) {
-                handleSearchResult(result)
-            }
-
-            override fun onResults(
-                suggestion: SearchSuggestion,
-                results: List<SearchResult>,
-                responseInfo: ResponseInfo
-            ) {
-                if (results.isNotEmpty()) {
-                    handleSearchResult(results[0])
-                }
-            }
-
-            override fun onSuggestions(
-                suggestions: List<SearchSuggestion>,
-                responseInfo: ResponseInfo
-            ) {
-                TODO("Not yet implemented")
-            }
-
-            override fun onError(e: Exception) {
-                Log.e("Search", "Error selecting suggestion: ${e.message}")
-            }
-        })
-
-        // Clear the search view and hide suggestions
-        searchView.setQuery("", false)
-        searchResultsView.visibility = View.GONE
-    }
-
-    private fun handleSearchResult(result: SearchResult) {
-        result.coordinate?.let { coordinate ->
-            val point = Point.fromLngLat(coordinate.longitude(), coordinate.latitude())
-            activity?.runOnUiThread {
-                addMarkerToMap(point)
-                centerMapOnPoint(point)
-            }
-        }
-    }
-
-
-    private fun addMarkerToMap(point: Point) {
-        val annotationApi = mapView.annotations
-        val pointAnnotationManager = annotationApi.createPointAnnotationManager()
-        val pointAnnotationOptions = PointAnnotationOptions()
-            .withPoint(point)
-            .withIconImage(generateBitmapFromVector(R.drawable.ic_map_marker))
-        pointAnnotationManager.create(pointAnnotationOptions)
-    }
-
-    private fun generateBitmapFromVector(vectorResId: Int): Bitmap {
-        val vectorDrawable = ContextCompat.getDrawable(requireContext(), vectorResId)
-        vectorDrawable?.setBounds(0, 0, vectorDrawable.intrinsicWidth, vectorDrawable.intrinsicHeight)
-        val bitmap = Bitmap.createBitmap(vectorDrawable?.intrinsicWidth ?: 1, vectorDrawable?.intrinsicHeight ?: 1, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        vectorDrawable?.draw(canvas)
-        return bitmap
-    }
-
-    private fun centerMapOnPoint(point: Point) {
-        mapView.getMapboxMap().setCamera(
-            CameraOptions.Builder()
-                .center(point)
-                .zoom(14.0)
-                .build()
-        )
     }
 
 
@@ -436,11 +272,6 @@ class FirstFragment : Fragment() {
         }
     }
 
-    private fun setupRecenterButton() {
-        recenterButton.setOnClickListener {
-            centerOnUserLocation()
-        }
-    }
 
     private fun setupFirebase(view: View) {
         val database = FirebaseDatabase.getInstance()
@@ -492,6 +323,19 @@ class FirstFragment : Fragment() {
     }
 
     private fun enableLocationTracking() {
+
+        if (isLocationTrackingEnabled) return
+
+        if (ContextCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestLocationPermission()
+            return
+        }
+
+
         val drawable = ContextCompat.getDrawable(requireContext(), R.drawable.mapbox_puck)
         if (drawable == null) {
             Log.e("EnableLocationTracking", "Drawable resource not found")
@@ -546,6 +390,8 @@ class FirstFragment : Fragment() {
             // Request location permission if not granted
             requestLocationPermission()
         }
+
+        isLocationTrackingEnabled = true
     }
 
     private fun requestLocationPermission() {
@@ -578,12 +424,28 @@ class FirstFragment : Fragment() {
 
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
-        permissionsManager.onRequestPermissionsResult(requestCode, grantResults)
+        when (requestCode) {
+            LOCATION_PERMISSION_REQUEST_CODE -> {
+                if ((grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
+                    enableLocationTracking()
+                } else {
+                    Toast.makeText(context, "Location permission is required for this feature", Toast.LENGTH_LONG).show()
+                }
+            }
+            else -> {
+                permissionsManager.onRequestPermissionsResult(requestCode, grantResults)
+            }
+        }
     }
 
     override fun onStart() {
         super.onStart()
         mapView.onStart()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        checkLocationServices()
     }
 
     override fun onStop() {
@@ -596,6 +458,7 @@ class FirstFragment : Fragment() {
         locationUpdateListener?.let { listener ->
             mapView.location.removeOnIndicatorPositionChangedListener(listener)
         }
+        connectivityManager.unregisterNetworkCallback(networkCallback)
     }
 
     override fun onLowMemory() {

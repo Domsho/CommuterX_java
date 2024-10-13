@@ -3,7 +3,20 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/nav_graph"
-    app:startDestination="@id/UsernameFragment">
+    app:startDestination="@id/mainFragment">
+
+    <fragment
+        android:id="@+id/mainFragment"
+        android:name="com.example.commuterx_java.MainFragment"
+        android:label="fragment_main"
+        tools:layout="@layout/fragment_main">
+        <action
+            android:id="@+id/action_MainFragment_to_FirstFragment"
+            app:destination="@id/FirstFragment" />
+        <action
+            android:id="@+id/action_MainFragment_to_UsernameFragment"
+            app:destination="@id/UsernameFragment" />
+    </fragment>
 
     <fragment
         android:id="@+id/UsernameFragment"
@@ -20,13 +33,11 @@
         android:name="com.example.commuterx_java.FirstFragment"
         android:label="FirstFragment"
         tools:layout="@layout/fragment_first">
-        <!-- Add the new action here -->
         <action
             android:id="@+id/action_FirstFragment_to_FullScreenMapFragment"
             app:destination="@id/FullScreenMapActivity" />
     </fragment>
 
-    <!-- Add the new FullScreenMapFragment here -->
     <activity
         android:id="@+id/FullScreenMapActivity"
         android:name="com.example.commuterx_java.FullScreenMapActivity"
