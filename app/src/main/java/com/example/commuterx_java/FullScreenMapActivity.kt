@@ -81,12 +81,6 @@ class FullScreenMapActivity : AppCompatActivity() {
         // Set up track route button
         setupTrackRouteButton()
 
-        val searchEditText = searchView.findViewById<EditText>(androidx.appcompat.R.id.search_src_text)
-        searchEditText?.setBackgroundResource(android.R.color.transparent)
-
-        searchView.setOnQueryTextFocusChangeListener { v, hasFocus ->
-            v.setBackgroundResource(R.drawable.search_background_dark)
-        }
 
         // Focus on the SearchView and show the keyboard
         searchView.requestFocus()
@@ -99,16 +93,9 @@ class FullScreenMapActivity : AppCompatActivity() {
     private fun setupSearch() {
         val searchEditText = searchView.findViewById<EditText>(androidx.appcompat.R.id.search_src_text)
         searchEditText?.apply {
-            setTextColor(Color.WHITE)
-            setHintTextColor(Color.WHITE)
-
-            addTextChangedListener(object : TextWatcher {
-                override fun afterTextChanged(s: Editable?) {}
-                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                    setTextColor(Color.WHITE)
-                }
-            })
+            setTextColor(Color.BLACK)
+            setHintTextColor(Color.GRAY)
+            background = null
         }
 
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
@@ -124,20 +111,9 @@ class FullScreenMapActivity : AppCompatActivity() {
                 } else {
                     performSearch(newText)
                 }
-                searchEditText?.setTextColor(Color.WHITE)
                 return true
             }
         })
-
-        searchView.setOnSearchClickListener {
-            searchEditText?.setTextColor(Color.WHITE)
-        }
-
-        searchView.setOnCloseListener {
-            searchResultsRecyclerView.visibility = View.GONE
-            detailsCard.visibility = View.GONE
-            false
-        }
     }
 
 

@@ -132,7 +132,7 @@ class FirstFragment : Fragment() {
 
         sharedPreferences = requireActivity().getSharedPreferences("MySharedPref", Context.MODE_PRIVATE)
         mapView = view.findViewById(R.id.mapView)
-        searchView = view.findViewById<androidx.appcompat.widget.SearchView>(R.id.searchView)
+        searchView = view.findViewById<androidx.appcompat.widget.SearchView>(R.id.search_view)
         mapOverlay = view.findViewById(R.id.mapOverlay)
 
         connectivityManager = requireContext().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -275,7 +275,7 @@ class FirstFragment : Fragment() {
         val currentUser = FirebaseAuth.getInstance().currentUser
         val uid = currentUser?.uid
 
-        val greetingTextView = view.findViewById<TextView>(R.id.greeting_text1)
+        val greetingTextView = view.findViewById<TextView>(R.id.greeting_text)
 
         if (uid != null) {
             val myRef = database.getReference("users").child(uid)

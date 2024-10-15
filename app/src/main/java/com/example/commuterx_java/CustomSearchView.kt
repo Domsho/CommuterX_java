@@ -1,11 +1,10 @@
 package com.example.commuterx_java
 
 import android.content.Context
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
+import android.graphics.*
 import android.util.AttributeSet
 import androidx.appcompat.widget.SearchView
+import androidx.core.content.ContextCompat
 
 class CustomSearchView @JvmOverloads constructor(
     context: Context,
@@ -13,22 +12,12 @@ class CustomSearchView @JvmOverloads constructor(
     defStyleAttr: Int = androidx.appcompat.R.attr.searchViewStyle
 ) : SearchView(context, attrs, defStyleAttr) {
 
-    private val backgroundPaint = Paint().apply {
-        color = Color.parseColor("#FF121212")
-        style = Paint.Style.FILL
-    }
-
-    override fun onDraw(canvas: Canvas) {
-        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), backgroundPaint)
-        super.onDraw(canvas)
-    }
-
     init {
-        setBackgroundResource(R.drawable.search_background_dark)
+        setBackgroundResource(R.drawable.search_background_with_border)
 
         findViewById<SearchAutoComplete>(androidx.appcompat.R.id.search_src_text)?.apply {
-            setTextColor(Color.WHITE)
-            setHintTextColor(Color.LTGRAY)
+            setTextColor(Color.BLACK)
+            setHintTextColor(Color.GRAY)
             background = null // Remove the EditText's background
         }
 
@@ -36,5 +25,6 @@ class CustomSearchView @JvmOverloads constructor(
         val horizontalPadding = (16 * context.resources.displayMetrics.density).toInt()
         val verticalPadding = (8 * context.resources.displayMetrics.density).toInt()
         setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding)
+
     }
 }
