@@ -2,6 +2,7 @@
 agp = "8.7.0"
 android = "3.3.1"
 androidVersion = "11.6.0"
+autofill = "2.3.0"
 facebookAndroidSdk = "latest.release"
 firebaseAuthVersion = "latest.release"
 firebaseBom = "33.2.0"
@@ -10,9 +11,12 @@ junit = "4.13.2"
 junitVersion = "1.1.5"
 espressoCore = "3.5.1"
 appcompat = "1.6.1"
+mapboxAndroid = "11.7.1"
+mapboxSearchAndroid = "2.5.0"
 material = "1.11.0"
 constraintlayout = "2.1.4"
 materialVersion = "1.4.0"
+navigation = "3.4.0"
 navigationFragment = "2.6.0"
 navigationUi = "2.6.0"
 firebaseAuth = "22.3.1"
@@ -20,9 +24,14 @@ googleServices = "4.4.1"
 kotlin = "2.0.20"
 coreKtx = "1.13.1"
 playServicesAuth = "21.2.0"
+uiComponents = "3.4.0"
+playServicesFido = "20.0.1"
 
 [libraries]
 android = { module = "com.mapbox.navigationcore:android", version.ref = "android" }
+android-v1161 = { module = "com.mapbox.maps:android", version.ref = "mapboxAndroid" }
+autofill = { module = "com.mapbox.search:autofill", version.ref = "autofill" }
+discover = { module = "com.mapbox.search:discover", version.ref = "autofill" }
 facebook-android-sdk = { module = "com.facebook.android:facebook-android-sdk", version.ref = "facebookAndroidSdk" }
 facebook-login = { module = "com.facebook.android:facebook-login", version.ref = "facebookAndroidSdk" }
 firebase-auth-vlatestrelease = { module = "com.google.firebase:firebase-auth", version.ref = "firebaseAuthVersion" }
@@ -33,17 +42,24 @@ junit = { group = "junit", name = "junit", version.ref = "junit" }
 ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+mapbox-search-android = { module = "com.mapbox.search:mapbox-search-android", version.ref = "mapboxSearchAndroid" }
+mapbox-search-android-ui = { module = "com.mapbox.search:mapbox-search-android-ui", version.ref = "autofill" }
 maps-android = { module = "com.mapbox.maps:android", version.ref = "androidVersion" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 material-v140 = { module = "com.google.android.material:material", version.ref = "materialVersion" }
+navigation = { module = "com.mapbox.navigationcore:navigation", version.ref = "navigation" }
 navigation-fragment = { group = "androidx.navigation", name = "navigation-fragment", version.ref = "navigationFragment" }
 navigation-ui = { group = "androidx.navigation", name = "navigation-ui", version.ref = "navigationUi" }
 firebase-auth = { group = "com.google.firebase", name = "firebase-auth", version.ref = "firebaseAuth" }
 google-services = { group = "com.google.gms", name = "google-services", version.ref = "googleServices" }
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+offline = { module = "com.mapbox.search:offline", version.ref = "autofill" }
+place-autocomplete = { module = "com.mapbox.search:place-autocomplete", version.ref = "autofill" }
 play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "playServicesAuth" }
 ui-components = { module = "com.mapbox.navigationcore:ui-components", version.ref = "android" }
+ui-components-v340 = { module = "com.mapbox.navigationcore:ui-components", version.ref = "uiComponents" }
+play-services-fido = { group = "com.google.android.gms", name = "play-services-fido", version.ref = "playServicesFido" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

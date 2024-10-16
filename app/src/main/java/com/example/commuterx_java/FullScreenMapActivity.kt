@@ -3,7 +3,6 @@ package com.example.commuterx_java
 import android.os.Bundle
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.SearchView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -23,23 +22,30 @@ import com.mapbox.search.result.SearchResult
 import android.widget.TextView
 import android.widget.Button
 import android.view.inputmethod.InputMethodManager
-import android.content.Context
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ObjectAnimator
-import android.content.res.ColorStateList
+import android.content.pm.PackageManager
 import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
-import android.os.Build
-import android.text.Editable
-import android.text.TextWatcher
+import android.util.Log
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.AccelerateInterpolator
 import android.widget.EditText
-import androidx.core.widget.TextViewCompat
+import android.widget.Toast
+import androidx.appcompat.widget.SearchView
+import com.mapbox.common.location.AccuracyAuthorization
+import com.mapbox.navigation.base.options.NavigationOptions
+import com.mapbox.navigation.core.lifecycle.MapboxNavigationApp
+import com.mapbox.navigation.core.MapboxNavigation
+import com.mapbox.navigation.ui.maps.route.line.api.MapboxRouteLineApi
+import com.mapbox.navigation.ui.maps.route.line.api.MapboxRouteLineView
+import com.mapbox.common.location.LocationService
+import com.mapbox.common.location.LocationServiceFactory
+import com.mapbox.common.location.LocationServiceObserver
+import com.mapbox.common.location.PermissionStatus
 
 
-class FullScreenMapActivity : AppCompatActivity() {
+class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver {
 
     private lateinit var mapView: MapView
     private lateinit var searchView: CustomSearchView
@@ -51,7 +57,11 @@ class FullScreenMapActivity : AppCompatActivity() {
     private lateinit var detailsAddressTextView: TextView
     private lateinit var trackRouteButton: Button
     private lateinit var scrim: View
-
+    private var selectedLocationPoint: Point? = null
+    private var mapboxNavigation: MapboxNavigation? = null
+    private lateinit var routeLineApi: MapboxRouteLineApi
+    private lateinit var routeLineView: MapboxRouteLineView
+    private lateinit var locationService: LocationService
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,8 +73,8 @@ class FullScreenMapActivity : AppCompatActivity() {
         detailsCard = findViewById(R.id.detailsCard)
         detailsPlaceNameTextView = findViewById(R.id.detailsPlaceNameTextView)
         detailsAddressTextView = findViewById(R.id.detailsAddressTextView)
-        trackRouteButton = findViewById(R.id.trackRouteButton)
         scrim = findViewById(R.id.scrim)
+        val isNavigating = false
 
         // Initialize map
         mapView.getMapboxMap().loadStyleUri(Style.MAPBOX_STREETS)
@@ -72,23 +82,118 @@ class FullScreenMapActivity : AppCompatActivity() {
         // Initialize search engine
         searchEngine = SearchEngine.createSearchEngine(SearchEngineSettings())
 
-        // Set up search functionality
         setupSearch()
 
         // Set up RecyclerView
         setupRecyclerView()
 
-        // Set up track route button
-        setupTrackRouteButton()
+        initializeNavigation()
 
+        locationService = LocationServiceFactory.getOrCreate()
+
+
+        if (!MapboxNavigationApp.isSetup()) {
+            MapboxNavigationApp.setup {
+                NavigationOptions.Builder(this)
+                    // Add any additional options here
+                    .build()
+            }
+        }
+
+        MapboxNavigationApp.attach(this)
+
+        mapboxNavigation = MapboxNavigationApp.current()
+
+        val navigateButton = findViewById<Button>(R.id.trackRouteButton)
+        navigateButton.setOnClickListener {
+            if (isNavigating) {
+                stopNavigation()
+            } else {
+                startNavigation()
+            }
+        }
+
+        setupLocationUpdates()
 
         // Focus on the SearchView and show the keyboard
         searchView.requestFocus()
         searchView.postDelayed({
             showKeyboard(searchView)
         }, 200)
-
     }
+
+    private fun setupLocationUpdates() {
+        locationService.registerObserver(this)
+        // The trip session is started when the user clicks the navigate button, so we don't need to start it here
+    }
+
+
+
+    private fun initializeNavigation() {
+        mapboxNavigation = if (MapboxNavigationApp.isSetup()) {
+            MapboxNavigationApp.current()
+        } else {
+            MapboxNavigationApp.setup {
+                NavigationOptions.Builder(this)
+                    .build()
+            }
+            MapboxNavigationApp.current()
+        }
+    }
+
+    private fun startNavigation() {
+        try {
+            mapboxNavigation?.startTripSession()
+            val isNavigating = true
+            updateNavigationUI(isNavigating)
+        } catch (e: SecurityException) {
+            Log.e("Navigation", "Failed to start navigation", e)
+            Toast.makeText(this, "Failed to start navigation: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun stopNavigation() {
+        mapboxNavigation?.stopTripSession()
+        updateNavigationUI(false)
+        Log.d("Navigation", "Navigation stopped")
+        Toast.makeText(this, "Navigation stopped", Toast.LENGTH_SHORT).show()
+    }
+
+    fun onLocationUpdated(point: Point) {
+        Log.d("Location", "New location: Lat ${point.latitude()}, Lon ${point.longitude()}")
+        // Update the map with the new location
+        mapView.getMapboxMap().setCamera(
+            CameraOptions.Builder()
+                .center(point)
+                .zoom(15.0)
+                .build()
+        )
+        // If navigation is active, you might want to update the navigation here
+    }
+
+
+    private fun updateNavigationUI(isNavigating: Boolean) {
+        val navigateButton = findViewById<Button>(R.id.trackRouteButton)
+        navigateButton.text = if (isNavigating) "Stop Navigation" else "Start Navigation"
+        // Add any other UI updates here
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                startNavigation()
+            } else {
+                Toast.makeText(this, "Location permission is required for navigation", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+
 
     private fun setupSearch() {
         val searchEditText = searchView.findViewById<EditText>(androidx.appcompat.R.id.search_src_text)
@@ -119,15 +224,14 @@ class FullScreenMapActivity : AppCompatActivity() {
 
 
     private fun showKeyboard(view: View) {
-        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
         imm.showSoftInput(view, InputMethodManager.SHOW_IMPLICIT)
     }
 
     private fun hideKeyboard(view: View) {
-        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
         imm.hideSoftInputFromWindow(view.windowToken, 0)
     }
-
 
     override fun onBackPressed() {
         when {
@@ -141,12 +245,10 @@ class FullScreenMapActivity : AppCompatActivity() {
     }
 
     private fun showDetailsCard() {
-        // Show the scrim
         scrim.visibility = View.VISIBLE
         scrim.alpha = 0f
         scrim.animate().alpha(1f).setDuration(300).start()
 
-        // Show and animate the card
         detailsCard.visibility = View.VISIBLE
         val slideUp = ObjectAnimator.ofFloat(detailsCard, "translationY", detailsCard.height.toFloat(), 0f)
         slideUp.duration = 300
@@ -155,12 +257,10 @@ class FullScreenMapActivity : AppCompatActivity() {
     }
 
     private fun hideDetailsCard() {
-        // Hide the scrim
         scrim.animate().alpha(0f).setDuration(300).withEndAction {
             scrim.visibility = View.GONE
         }.start()
 
-        // Animate and hide the card
         val slideDown = ObjectAnimator.ofFloat(detailsCard, "translationY", 0f, detailsCard.height.toFloat())
         slideDown.duration = 300
         slideDown.interpolator = AccelerateInterpolator()
@@ -172,23 +272,29 @@ class FullScreenMapActivity : AppCompatActivity() {
         slideDown.start()
     }
 
+
+
+
+
+
     private fun setupRecyclerView() {
         searchResultsAdapter = SearchResultsAdapter { searchSuggestion ->
-            // Handle search suggestion selection
             searchEngine.select(searchSuggestion, object : SearchSelectionCallback {
                 override fun onResult(suggestion: SearchSuggestion, result: SearchResult, responseInfo: ResponseInfo) {
                     result.coordinate?.let { coordinate ->
+                        Log.d("SearchDebug", "Search result coordinates: ${coordinate.latitude()}, ${coordinate.longitude()}")
+                        selectedLocationPoint = Point.fromLngLat(coordinate.longitude(), coordinate.latitude())
                         mapView.getMapboxMap().setCamera(
                             CameraOptions.Builder()
-                                .center(Point.fromLngLat(coordinate.longitude(), coordinate.latitude()))
+                                .center(selectedLocationPoint)
                                 .zoom(14.0)
                                 .build()
                         )
+                        Log.d("SearchDebug", "Camera moved to: ${selectedLocationPoint?.latitude()}, ${selectedLocationPoint?.longitude()}")
                     }
                     searchResultsRecyclerView.visibility = View.GONE
                     searchView.background = ContextCompat.getDrawable(this@FullScreenMapActivity, R.drawable.search_background)
 
-                    // Update and show details card
                     detailsPlaceNameTextView.text = result.name
                     detailsAddressTextView.text = result.address?.formattedAddress() ?: "Address not available"
 
@@ -210,15 +316,6 @@ class FullScreenMapActivity : AppCompatActivity() {
         }
         searchResultsRecyclerView.layoutManager = LinearLayoutManager(this)
         searchResultsRecyclerView.adapter = searchResultsAdapter
-    }
-
-    private fun setupTrackRouteButton() {
-        trackRouteButton.setOnClickListener {
-            // Implement route tracking functionality here
-            // This could involve starting a new activity or fragment for navigation
-            // For now, we'll just hide the details card
-            hideDetailsCard()
-        }
     }
 
     private fun performSearch(query: String) {
@@ -244,18 +341,27 @@ class FullScreenMapActivity : AppCompatActivity() {
         })
     }
 
-    override fun onStart() {
-        super.onStart()
-        mapView.onStart()
-    }
-
-    override fun onStop() {
-        super.onStop()
-        mapView.onStop()
-    }
 
     override fun onDestroy() {
         super.onDestroy()
-        mapView.onDestroy()
+        locationService.unregisterObserver(this)
+        mapboxNavigation?.stopTripSession()
+        MapboxNavigationApp.detach(this)
+    }
+
+    companion object {
+        private const val LOCATION_PERMISSION_REQUEST_CODE = 1
+    }
+
+    override fun onAvailabilityChanged(isAvailable: Boolean) {
+        TODO("Not yet implemented")
+    }
+
+    override fun onPermissionStatusChanged(permission: PermissionStatus) {
+        TODO("Not yet implemented")
+    }
+
+    override fun onAccuracyAuthorizationChanged(authorization: AccuracyAuthorization) {
+        TODO("Not yet implemented")
     }
 }
