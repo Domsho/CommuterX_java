@@ -53,6 +53,7 @@ dependencies {
     implementation(libs.espresso.core)
     implementation(libs.play.services.fido)
     implementation(libs.play.services.fido)
+    implementation(libs.foundation.android)
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)

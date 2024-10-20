@@ -52,6 +52,9 @@
         <meta-data
             android:name="com.mapbox.maps.token"
             android:value="pk.eyJ1Ijoia2FudGNoaW4xMiIsImEiOiJjbTBwM3k4OXEwMTcwMm1zYmRhZ3VuNWgxIn0.MQOJ0FzT_UXCmVDO1LRlRg"/>
+        <meta-data
+            android:name="com.mapbox.token"
+            android:value="pk.eyJ1Ijoia2FudGNoaW4xMiIsImEiOiJjbTBwM3k4OXEwMTcwMm1zYmRhZ3VuNWgxIn0.MQOJ0FzT_UXCmVDO1LRlRg" />
 
 
         <activity android:name="com.facebook.FacebookActivity"

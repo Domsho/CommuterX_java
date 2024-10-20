@@ -15,7 +15,7 @@
         app:mapbox_logoEnabled="false"
         app:mapbox_attributionEnabled="false"
         app:mapbox_scaleBarEnabled="false"
-        app:mapbox_styleUri="mapbox://styles/mapbox/dark-v10" />
+        app:mapbox_styleUri="mapbox://styles/mapbox/streets-v12" />
 
     <com.example.commuterx_java.CustomSearchView
         android:id="@+id/fullScreenSearchView"

@@ -26,6 +26,7 @@ coreKtx = "1.13.1"
 playServicesAuth = "21.2.0"
 uiComponents = "3.4.0"
 playServicesFido = "20.0.1"
+foundationAndroid = "1.7.3"
 
 [libraries]
 android = { module = "com.mapbox.navigationcore:android", version.ref = "android" }
@@ -60,6 +61,7 @@ play-services-auth = { module = "com.google.android.gms:play-services-auth", ver
 ui-components = { module = "com.mapbox.navigationcore:ui-components", version.ref = "android" }
 ui-components-v340 = { module = "com.mapbox.navigationcore:ui-components", version.ref = "uiComponents" }
 play-services-fido = { group = "com.google.android.gms", name = "play-services-fido", version.ref = "playServicesFido" }
+foundation-android = { group = "androidx.compose.foundation", name = "foundation-android", version.ref = "foundationAndroid" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
