@@ -12,7 +12,6 @@ import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.MapView
 import com.mapbox.maps.Style
 import com.mapbox.search.SearchEngine
-import com.mapbox.search.SearchEngineSettings
 import com.mapbox.search.SearchOptions
 import com.mapbox.search.result.SearchSuggestion
 import com.mapbox.search.ResponseInfo
@@ -71,9 +70,8 @@ import com.mapbox.navigation.core.directions.session.RoutesObserver
 import com.mapbox.navigation.core.trip.session.RouteProgressObserver
 import com.mapbox.navigation.ui.maps.camera.NavigationCamera
 import com.mapbox.navigation.ui.maps.camera.data.MapboxNavigationViewportDataSource
-import com.mapbox.navigation.ui.maps.camera.lifecycle.NavigationBasicGesturesHandler
-import com.mapbox.navigation.ui.maps.camera.transition.NavigationCameraTransitionOptions
 import com.mapbox.maps.MapboxMap
+import com.mapbox.maps.extension.style.expressions.generated.Expression.Companion.interpolate
 
 
 class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, MapboxNavigationObserver {
@@ -116,47 +114,21 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
 
         try {
 
-            if (!MapboxNavigationApp.isSetup()) {
-                Log.e("LocationDebug", "Setting up MapboxNavigationApp")
-                MapboxNavigationApp.setup {
-                    NavigationOptions.Builder(this)
-                        .build()
-                }
-                Log.e("LocationDebug", "MapboxNavigationApp setup complete")
-            }
-            mapboxNavigation = MapboxNavigationApp.current()
-            Log.e("LocationDebug", "MapboxNavigation obtained")
-
-
-
             setContentView(R.layout.full_screen_map)
             Log.e("LocationDebug", "setContentView called")
 
 
             initializeViews()
-
+            setupMapboxNavigation()
 
             initializeMapboxComponents()
-
-
             setupLocationServices()
-
-
-            mapView.getMapboxMap().loadStyleUri(Style.MAPBOX_STREETS)
-            {
-                Log.e("LocationDebug", "Map style loaded")
-                enableLocationComponent()
-                initializeNavigation()
-                centerOnUserLocation()
-            }
-
-
             setupSearch()
             setupRecyclerView()
             setupLocationUpdates()
 
 
-            // Focus on the SearchView and show the keyboard
+
             searchView.requestFocus()
             searchView.postDelayed({
                 showKeyboard(searchView)
@@ -169,16 +141,45 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
         }
     }
 
+    private fun setupMapboxNavigation() {
+        if (!MapboxNavigationApp.isSetup()) {
+            Log.e("LocationDebug", "Setting up MapboxNavigationApp")
+            MapboxNavigationApp.setup {
+                NavigationOptions.Builder(this)
+                    .build()
+            }
+            Log.e("LocationDebug", "MapboxNavigationApp setup complete")
+        } else {
+            Log.e("LocationDebug", "MapboxNavigationApp was already set up")
+        }
+
+        // Retry mechanism to obtain MapboxNavigation instance
+        var retryCount = 0
+        val maxRetries = 3
+        val handler = Handler(Looper.getMainLooper())
+
+        fun retryObtainingNavigation() {
+            mapboxNavigation = MapboxNavigationApp.current()
+            if (mapboxNavigation == null && retryCount < maxRetries) {
+                Log.e("LocationDebug", "Failed to obtain MapboxNavigation instance, retrying in 1 second (Attempt ${retryCount + 1}/$maxRetries)")
+                retryCount++
+                handler.postDelayed({ retryObtainingNavigation() }, 1000) // Retry after 1 second
+            } else if (mapboxNavigation == null) {
+                Log.e("LocationDebug", "Failed to obtain MapboxNavigation instance after $maxRetries attempts")
+            } else {
+                Log.e("LocationDebug", "MapboxNavigation obtained successfully")
+                initializeMapboxComponents()
+            }
+        }
+
+        retryObtainingNavigation()
+    }
+
     private fun initializeMapboxComponents() {
         mapboxMap = mapView.getMapboxMap()
         Log.e("LocationDebug", "MapboxMap obtained")
 
-        mapboxNavigation = MapboxNavigationApp.current()
-        if (mapboxNavigation == null) {
-            Log.e("LocationDebug", "Failed to obtain MapboxNavigation instance")
-            return
-        }
-        Log.e("LocationDebug", "MapboxNavigation obtained")
+        Log.e("LocationDebug", "MapboxNavigation instance is valid")
 
         viewportDataSource = MapboxNavigationViewportDataSource(mapboxMap)
         navigationCamera = NavigationCamera(mapboxMap, mapView.camera, viewportDataSource)
@@ -190,11 +191,15 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
         MapboxNavigationApp.attach(this)
         Log.e("LocationDebug", "Successfully attached to MapboxNavigationApp")
 
-        mapboxMap.loadStyleUri(Style.MAPBOX_STREETS) {
+        setInitialMapStyle()
+
+        mapboxMap.loadStyleUri(Style.MAPBOX_STREETS) { style ->
             Log.e("LocationDebug", "Map style loaded")
-            enableLocationComponent()
-            initializeNavigation()
-            centerOnUserLocation()
+            Handler(Looper.getMainLooper()).postDelayed({
+                enableLocationComponent()
+                initializeNavigation()
+                centerOnUserLocation()
+            }, 1000) // 1 second delay
         }
     }
 
@@ -221,25 +226,17 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
     @SuppressLint("MissingPermission")
     private fun initializeNavigation() {
         Log.e("LocationDebug", "Initializing navigation")
-        val navigation = mapboxNavigation
-        if (navigation == null) {
+        if (mapboxNavigation == null) {
             Log.e("LocationDebug", "mapboxNavigation is null in initializeNavigation()")
             return
         }
 
         try {
-            navigation.registerLocationObserver(locationObserver)
+            mapboxNavigation?.registerLocationObserver(locationObserver)
             Log.e("LocationDebug", "Location observer registered")
 
-            navigation.startTripSession()
+            mapboxNavigation?.startTripSession()
             Log.e("LocationDebug", "Trip session started")
-
-            // Instead of using getLocation(), we'll rely on the LocationObserver to receive updates
-            Handler(Looper.getMainLooper()).postDelayed({
-                Log.e("LocationDebug", "Delayed location check")
-                // The location should be available through the LocationObserver by now
-            }, 1000) // 1 second delay
-
         } catch (e: Exception) {
             Log.e("LocationDebug", "Error in initializeNavigation", e)
         }
@@ -255,28 +252,21 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
         }
     }
 
-    @SuppressLint("MissingPermission")
-    private fun startLocationTracking() {
-        mapboxNavigation?.startTripSession()
-        navigationCamera.requestNavigationCameraToFollowing(
-            stateTransitionOptions = NavigationCameraTransitionOptions.Builder().build(),
-            frameTransitionOptions = NavigationCameraTransitionOptions.Builder().build()
-        )
-    }
-
     private fun checkLocationPermission() {
         if (ContextCompat.checkSelfPermission(
                 this,
                 Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
+            ) == PackageManager.PERMISSION_GRANTED
         ) {
+            Log.e("LocationDebug", "Location permission is granted")
+            enableLocationComponent()
+        } else {
+            Log.e("LocationDebug", "Requesting location permission")
             ActivityCompat.requestPermissions(
                 this,
                 arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
                 LOCATION_PERMISSION_REQUEST_CODE
             )
-        } else {
-            enableLocationComponent()
         }
     }
 
@@ -289,12 +279,15 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
         mapView.location.apply {
             setLocationProvider(navigationLocationProvider)
             enabled = true
+
+            // Create and set the location puck
             locationPuck = LocationPuck2D(
-                bearingImage = ImageHolder.from(R.drawable.mapbox_puck)
+                bearingImage = ImageHolder.from(R.drawable.mapbox_puck),
             )
         }
         mapView.location.addOnIndicatorPositionChangedListener(onIndicatorPositionChangedListener)
         mapView.location.addOnIndicatorBearingChangedListener(onIndicatorBearingChangedListener)
+        Log.e("LocationDebug", "Location component enabled: ${mapView.location.enabled}")
     }
 
     @SuppressLint("MissingPermission")
@@ -313,75 +306,11 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
                 locationResult.lastLocation?.let { location ->
                     Log.e("LocationDebug", "Centering on location: ${location.latitude}, ${location.longitude}")
                     val point = Point.fromLngLat(location.longitude, location.latitude)
-                    mapView.getMapboxMap().setCamera(
-                        CameraOptions.Builder()
-                            .center(point)
-                            .zoom(15.0)
-                            .build()
-                    )
-                    mapView.gestures.focalPoint = mapView.getMapboxMap().pixelForCoordinate(point)
+                    updateCamera(point)
                 } ?: Log.e("LocationDebug", "Location is null")
                 fusedLocationClient.removeLocationUpdates(this)
             }
         }, Looper.getMainLooper())
-    }
-
-    private fun centerOnLocation(location: android.location.Location) {
-        Log.e("LocationDebug", "Centering on Android location: ${location.latitude}, ${location.longitude}")
-        val point = Point.fromLngLat(location.longitude, location.latitude)
-        setCameraPosition(point)
-    }
-
-    @SuppressLint("MissingPermission")
-    private fun setInitialCameraPosition() {
-        Log.e("LocationDebug", "Setting initial camera position")
-        if (ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                if (location != null) {
-                    centerOnLocation(location)
-                } else {
-                    // If location is null, request a single update
-                    val locationRequest = LocationRequest.create().apply {
-                        priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-                        numUpdates = 1
-                    }
-                    fusedLocationClient.requestLocationUpdates(locationRequest, object : LocationCallback() {
-                        override fun onLocationResult(locationResult: LocationResult) {
-                            locationResult.lastLocation?.let { centerOnLocation(it) }
-                            fusedLocationClient.removeLocationUpdates(this)
-                        }
-                    }, Looper.getMainLooper())
-                }
-            }
-        } else {
-            // If no permission, default to a specific location
-            val defaultLocation = Point.fromLngLat(-122.4194, 37.7749) // San Francisco
-            setCameraPosition(defaultLocation)
-        }
-    }
-
-    private fun setCameraPosition(point: Point) {
-        Log.e("CameraDebug", "Setting camera position to: ${point.latitude()}, ${point.longitude()}")
-        mapView.getMapboxMap().setCamera(
-            CameraOptions.Builder()
-                .center(point)
-                .zoom(15.0) // Adjust this value to change the zoom level
-                .build()
-        )
-        // Optionally, if you want to animate to this position:
-        mapView.camera.easeTo(
-            CameraOptions.Builder()
-                .center(point)
-                .zoom(15.0)
-                .build(),
-            mapAnimationOptions {
-                duration(1000) // Animation duration in milliseconds
-            }
-        )
     }
 
     private val onMoveListener = object : OnMoveListener {
@@ -408,12 +337,39 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
 
     private val onIndicatorPositionChangedListener = OnIndicatorPositionChangedListener { point ->
         Log.e("LocationDebug", "Indicator position changed: ${point.latitude()}, ${point.longitude()}")
-        mapView.getMapboxMap().setCamera(CameraOptions.Builder().center(point).build())
-        mapView.gestures.focalPoint = mapView.getMapboxMap().pixelForCoordinate(point)
-
-        // Update the viewport data source with the new location
+        updateCamera(point)
         viewportDataSource.onLocationChanged(point.toLocation())
         viewportDataSource.evaluate()
+    }
+
+    private fun updateCamera(point: Point, zoom: Double = 17.0, animate: Boolean = true) {
+        val cameraOptions = CameraOptions.Builder()
+            .center(point)
+            .zoom(zoom)
+            .build()
+
+        if (animate) {
+            mapView.camera.easeTo(
+                cameraOptions,
+                mapAnimationOptions {
+                    duration(300)
+                }
+            )
+        } else {
+            mapView.getMapboxMap().setCamera(cameraOptions)
+        }
+        mapView.gestures.focalPoint = mapView.getMapboxMap().pixelForCoordinate(point)
+    }
+
+    private fun setInitialMapStyle() {
+        mapboxMap.loadStyleUri(Style.MAPBOX_STREETS) {
+            Log.e("LocationDebug", "Map style loaded")
+            // Set initial camera position with high zoom
+            updateCamera(mapView.getMapboxMap().cameraState.center, 19.0, false)
+            enableLocationComponent()
+            initializeNavigation()
+            centerOnUserLocation()
+        }
     }
 
     private fun Point.toLocation(): MapboxLocation {
@@ -423,41 +379,11 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
             .build()
     }
 
-    private fun requestLocationPermission() {
-        ActivityCompat.requestPermissions(
-            this,
-            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-            LOCATION_PERMISSION_REQUEST_CODE
-        )
-    }
-
-    private fun createLocationPuck2D(
-        bearingImage: Any?,
-        shadowImage: Any? = null,
-        topImage: Any? = bearingImage,
-        scaleExpression: Any? = null
-    ): LocationPuck2D {
-        return LocationPuck2D(
-            topImage = drawableToUnit(topImage),
-            bearingImage = drawableToUnit(bearingImage),
-            shadowImage = drawableToUnit(shadowImage),
-            scaleExpression = scaleExpression.toString()
-        )
-    }
-
-    private fun drawableToUnit(drawable: Any?): ImageHolder? {
-        return when (drawable) {
-            is Drawable -> ImageHolder.from(drawable)
-            is Int -> ContextCompat.getDrawable(this, drawable)?.let { ImageHolder.from(it) }
-            else -> null
-        }
-    }
-
     private fun ImageHolder.Companion.from(drawable: Drawable): ImageHolder {
         return from(drawable.toBitmap())
     }
 
-    // You might also need this utility function
+
     private fun Drawable.toBitmap(): Bitmap {
         if (this is BitmapDrawable) return bitmap
 
@@ -663,21 +589,7 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
     private fun updateCameraToLocation(location: MapboxLocation) {
         Log.e("LocationDebug", "Updating camera to location: ${location.latitude}, ${location.longitude}")
         val point = Point.fromLngLat(location.longitude, location.latitude)
-        mapView.getMapboxMap().setCamera(
-            CameraOptions.Builder()
-                .center(point)
-                .zoom(15.0)
-                .build()
-        )
-        mapView.camera.easeTo(
-            CameraOptions.Builder()
-                .center(point)
-                .zoom(15.0)
-                .build(),
-            mapAnimationOptions {
-                duration(1000)
-            }
-        )
+        updateCamera(point)
     }
 
     private inner class MyLocationObserver : LocationObserver {
@@ -729,5 +641,3 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
         mapboxNavigation.unregisterRoutesObserver(routesObserver)
     }
 }
-
-
