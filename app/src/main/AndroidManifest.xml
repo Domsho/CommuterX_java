@@ -62,6 +62,7 @@
                 "keyboard|keyboardHidden|screenLayout|screenSize|orientation"
             />
 
+        <activity android:name="com.xendit.XenditActivity"/>
 
         <activity
             android:name="com.facebook.CustomTabActivity"

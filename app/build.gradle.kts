@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.ir.backend.js.compile
+
 plugins {
     alias(libs.plugins.androidApplication)
     id("com.google.gms.google-services")
@@ -85,4 +87,5 @@ dependencies {
     implementation ("com.mapbox.navigationcore:copilot:3.4.0")
     implementation ("com.mapbox.navigationcore:ui-maps:3.4.0")
     implementation ("com.mapbox.navigationcore:android:3.4.0")
+    implementation ("com.xendit:xendit-android:4.2.0")
 }

@@ -9,18 +9,26 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
+import android.location.LocationManager
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.appcompat.widget.SearchView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.widget.SearchView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
+import androidx.test.core.app.ApplicationProvider.getApplicationContext
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -38,18 +46,9 @@ import com.mapbox.maps.plugin.locationcomponent.location
 import com.mapbox.maps.plugin.scalebar.scalebar
 import com.mapbox.search.SearchEngine
 import com.mapbox.search.SearchEngineSettings
-import android.location.LocationManager
-import android.net.ConnectivityManager
-import android.net.Network
-import android.net.NetworkCapabilities
-import android.net.NetworkRequest
-import android.provider.Settings
-import androidx.appcompat.app.AlertDialog
-
-
-
-
-
+import com.xendit.Models.*
+import com.xendit.TokenCallback
+import com.xendit.Xendit
 
 
 class FirstFragment : Fragment() {
@@ -141,6 +140,10 @@ class FirstFragment : Fragment() {
 
         val settings = SearchEngineSettings(null)
         searchEngine = SearchEngine.createSearchEngineWithBuiltInDataProviders(settings)
+        val xendit = Xendit(
+            requireContext(),
+            "xnd_public_development_qxb9b_LvJJ6aheURjlUGL_L3nGaDqFwQ9OCLh1ubmO5HYyl5uZ9NhCapyU3zW3pX"
+        )
 
         setupMapbox()
         setupFirebase(view)
@@ -169,6 +172,45 @@ class FirstFragment : Fragment() {
 
 
         return view
+    }
+
+    private fun testXenditTokenization() {
+        // Create test card data
+        val cardHolderData = CardHolderData(
+            firstName = "John",
+            lastName = "Doe",
+            email = "john.doe@example.com",
+            phoneNumber = "+6287774441111"
+        )
+
+        // Test card number: 4000000000001091 (this will succeed)
+        val card = Card(
+            creditCardNumber = "4000000000001091",
+            cardExpirationMonth = "12",
+            cardExpirationYear = "2025",
+            creditCardCVN = "123",
+            cardHolderData = cardHolderData
+        )
+
+        // Create single-use token
+        xendit.createSingleUseToken(
+            card = card,
+            amount = 10000,  // Amount in smallest currency unit (e.g., 10000 = 100.00)
+            shouldAuthenticate = false,  // Set to false for testing
+            object : TokenCallback() {
+                override fun onSuccess(token: Token) {
+                    // Token created successfully
+                    Log.d("XenditTest", "Token created: ${token.id}")
+                    Toast.makeText(context, "Token created: ${token.id}", Toast.LENGTH_LONG).show()
+                }
+
+                override fun onError(xenditError: XenditError) {
+                    // Handle error
+                    Log.e("XenditTest", "Error: ${xenditError.errorCode} - ${xenditError.errorMessage}")
+                    Toast.makeText(context, "Error: ${xenditError.errorMessage}", Toast.LENGTH_LONG).show()
+                }
+            }
+        )
     }
 
     private fun navigateToFullScreenMap() {

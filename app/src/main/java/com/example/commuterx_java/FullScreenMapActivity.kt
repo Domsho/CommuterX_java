@@ -12,6 +12,7 @@ import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.MapView
 import com.mapbox.maps.Style
 import com.mapbox.search.SearchEngine
+import com.mapbox.search.SearchEngineSettings
 import com.mapbox.search.SearchOptions
 import com.mapbox.search.result.SearchSuggestion
 import com.mapbox.search.ResponseInfo
@@ -436,29 +437,44 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
 
 
     private fun setupSearch() {
-        val searchEditText = searchView.findViewById<EditText>(androidx.appcompat.R.id.search_src_text)
-        searchEditText?.apply {
-            setTextColor(Color.BLACK)
-            setHintTextColor(Color.GRAY)
-            background = null
-        }
+        try {
+            // Initialize SearchEngine first
+            searchEngine = SearchEngine.createSearchEngine(
+                SearchEngineSettings()
+            )
+            Log.e("SearchDebug", "SearchEngine initialized")
 
-        searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-            override fun onQueryTextSubmit(query: String?): Boolean {
-                query?.let { performSearch(it) }
-                return true
+            val searchEditText = searchView.findViewById<EditText>(androidx.appcompat.R.id.search_src_text)
+            searchEditText?.apply {
+                setTextColor(Color.BLACK)
+                setHintTextColor(Color.GRAY)
+                background = null
             }
 
-            override fun onQueryTextChange(newText: String?): Boolean {
-                if (newText.isNullOrEmpty()) {
-                    searchResultsRecyclerView.visibility = View.GONE
-                    detailsCard.visibility = View.GONE
-                } else {
-                    performSearch(newText)
+            searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+                override fun onQueryTextSubmit(query: String?): Boolean {
+                    if (::searchEngine.isInitialized) {
+                        query?.let { performSearch(it) }
+                    } else {
+                        Log.e("SearchDebug", "SearchEngine not initialized")
+                    }
+                    return true
                 }
-                return true
-            }
-        })
+
+                override fun onQueryTextChange(newText: String?): Boolean {
+                    if (newText.isNullOrEmpty()) {
+                        searchResultsRecyclerView.visibility = View.GONE
+                        detailsCard.visibility = View.GONE
+                    } else if (::searchEngine.isInitialized) {
+                        performSearch(newText)
+                    }
+                    return true
+                }
+            })
+            Log.e("SearchDebug", "Search setup completed")
+        } catch (e: Exception) {
+            Log.e("SearchDebug", "Error setting up search: ${e.message}", e)
+        }
     }
 
 
