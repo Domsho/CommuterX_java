@@ -121,7 +121,7 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
 
             initializeViews()
             setupMapboxNavigation()
-
+            initializeViews()
             initializeMapboxComponents()
             setupLocationServices()
             setupSearch()
