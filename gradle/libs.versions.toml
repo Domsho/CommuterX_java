@@ -27,6 +27,8 @@ playServicesAuth = "21.2.0"
 uiComponents = "3.4.0"
 playServicesFido = "20.0.1"
 foundationAndroid = "1.7.3"
+firebaseInstallationsKtx = "18.0.0"
+transportationConsumer = "2.3.0"
 
 [libraries]
 android = { module = "com.mapbox.navigationcore:android", version.ref = "android" }
@@ -62,6 +64,8 @@ ui-components = { module = "com.mapbox.navigationcore:ui-components", version.re
 ui-components-v340 = { module = "com.mapbox.navigationcore:ui-components", version.ref = "uiComponents" }
 play-services-fido = { group = "com.google.android.gms", name = "play-services-fido", version.ref = "playServicesFido" }
 foundation-android = { group = "androidx.compose.foundation", name = "foundation-android", version.ref = "foundationAndroid" }
+firebase-installations-ktx = { group = "com.google.firebase", name = "firebase-installations-ktx", version.ref = "firebaseInstallationsKtx" }
+transportation-consumer = { group = "com.google.android.libraries.mapsplatform.transportation", name = "transportation-consumer", version.ref = "transportationConsumer" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

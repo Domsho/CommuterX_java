@@ -28,7 +28,6 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
-import androidx.test.core.app.ApplicationProvider.getApplicationContext
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -38,7 +37,6 @@ import com.mapbox.geojson.Point
 import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.ImageHolder
 import com.mapbox.maps.MapView
-import com.mapbox.maps.Style
 import com.mapbox.maps.plugin.LocationPuck2D
 import com.mapbox.maps.plugin.gestures.gestures
 import com.mapbox.maps.plugin.locationcomponent.OnIndicatorPositionChangedListener
@@ -46,9 +44,6 @@ import com.mapbox.maps.plugin.locationcomponent.location
 import com.mapbox.maps.plugin.scalebar.scalebar
 import com.mapbox.search.SearchEngine
 import com.mapbox.search.SearchEngineSettings
-import com.xendit.Models.*
-import com.xendit.TokenCallback
-import com.xendit.Xendit
 
 
 class FirstFragment : Fragment() {
@@ -57,7 +52,7 @@ class FirstFragment : Fragment() {
     private lateinit var permissionsManager: PermissionsManager
     private var isLocationInitialized = false
     private var locationUpdateListener: OnIndicatorPositionChangedListener? = null
-    private lateinit var searchView: androidx.appcompat.widget.SearchView
+    private lateinit var searchView: SearchView
     private lateinit var searchEngine: SearchEngine
     private lateinit var mapOverlay: View
     private lateinit var mapboxMap: com.mapbox.maps.MapboxMap
@@ -131,19 +126,17 @@ class FirstFragment : Fragment() {
 
         sharedPreferences = requireActivity().getSharedPreferences("MySharedPref", Context.MODE_PRIVATE)
         mapView = view.findViewById(R.id.mapView)
-        searchView = view.findViewById<androidx.appcompat.widget.SearchView>(R.id.search_view)
+        searchView = view.findViewById(R.id.search_view)
         mapOverlay = view.findViewById(R.id.mapOverlay)
 
         connectivityManager = requireContext().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         registerNetworkCallback()
         setupPermissions()
 
+
+
         val settings = SearchEngineSettings(null)
         searchEngine = SearchEngine.createSearchEngineWithBuiltInDataProviders(settings)
-        val xendit = Xendit(
-            requireContext(),
-            "xnd_public_development_qxb9b_LvJJ6aheURjlUGL_L3nGaDqFwQ9OCLh1ubmO5HYyl5uZ9NhCapyU3zW3pX"
-        )
 
         setupMapbox()
         setupFirebase(view)
@@ -159,7 +152,7 @@ class FirstFragment : Fragment() {
             navigateToFullScreenMap()
         }
 
-        searchView.setOnQueryTextFocusChangeListener { v, hasFocus ->
+        searchView.setOnQueryTextFocusChangeListener { _, hasFocus ->
             if (hasFocus) {
                 navigateToFullScreenMap()
             }
@@ -174,44 +167,6 @@ class FirstFragment : Fragment() {
         return view
     }
 
-    private fun testXenditTokenization() {
-        // Create test card data
-        val cardHolderData = CardHolderData(
-            firstName = "John",
-            lastName = "Doe",
-            email = "john.doe@example.com",
-            phoneNumber = "+6287774441111"
-        )
-
-        // Test card number: 4000000000001091 (this will succeed)
-        val card = Card(
-            creditCardNumber = "4000000000001091",
-            cardExpirationMonth = "12",
-            cardExpirationYear = "2025",
-            creditCardCVN = "123",
-            cardHolderData = cardHolderData
-        )
-
-        // Create single-use token
-        xendit.createSingleUseToken(
-            card = card,
-            amount = 10000,  // Amount in smallest currency unit (e.g., 10000 = 100.00)
-            shouldAuthenticate = false,  // Set to false for testing
-            object : TokenCallback() {
-                override fun onSuccess(token: Token) {
-                    // Token created successfully
-                    Log.d("XenditTest", "Token created: ${token.id}")
-                    Toast.makeText(context, "Token created: ${token.id}", Toast.LENGTH_LONG).show()
-                }
-
-                override fun onError(xenditError: XenditError) {
-                    // Handle error
-                    Log.e("XenditTest", "Error: ${xenditError.errorCode} - ${xenditError.errorMessage}")
-                    Toast.makeText(context, "Error: ${xenditError.errorMessage}", Toast.LENGTH_LONG).show()
-                }
-            }
-        )
-    }
 
     private fun navigateToFullScreenMap() {
         val intent = Intent(requireContext(), FullScreenMapActivity::class.java)
@@ -264,18 +219,22 @@ class FirstFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         mapView = view.findViewById(R.id.mapView)
-        mapboxMap = mapView.getMapboxMap()
+        mapboxMap = mapView.mapboxMap
         setupMapbox()
     }
 
     private fun setupMapbox() {
-        mapView.getMapboxMap().loadStyleUri(Style.MAPBOX_STREETS) { style ->
+        loadStyle {
             mapView.scalebar.enabled = false
-            setupMapboxView(style)
+            setupMapboxView()
         }
     }
 
-    private fun setupMapboxView(style: Style) {
+    private fun loadStyle(function: () -> Unit) {
+
+    }
+
+    private fun setupMapboxView() {
         // Set camera to focus on North America
         val cameraPosition = CameraOptions.Builder()
             .center(Point.fromLngLat(-100.0, 40.0))
@@ -293,7 +252,7 @@ class FirstFragment : Fragment() {
 
     private fun centerOnUserLocation() {
         locationUpdateListener = OnIndicatorPositionChangedListener { point ->
-            mapView.getMapboxMap().setCamera(
+            mapView.mapboxMap.setCamera(
                 CameraOptions.Builder()
                     .center(point)
                     .zoom(20.0)
@@ -400,17 +359,17 @@ class FirstFragment : Fragment() {
                 isLocationInitialized = true
             }
             else {
-                mapView.getMapboxMap().setCamera(
+                mapView.mapboxMap.setCamera(
                     CameraOptions.Builder()
                         .center(point)
                         .build()
                 )
             }
-            mapView.gestures.focalPoint = mapView.getMapboxMap().pixelForCoordinate(point)
+            mapView.gestures.focalPoint = mapView.mapboxMap.pixelForCoordinate(point)
         }
 
         mapView.location.addOnIndicatorBearingChangedListener { bearing ->
-            mapView.getMapboxMap().setCamera(CameraOptions.Builder().bearing(bearing).build())
+            mapView.mapboxMap.setCamera(CameraOptions.Builder().bearing(bearing).build())
         }
 
         // Request location updates
@@ -419,7 +378,7 @@ class FirstFragment : Fragment() {
                 Manifest.permission.ACCESS_FINE_LOCATION
             ) == PackageManager.PERMISSION_GRANTED
         ) {
-            mapView.getMapboxMap().getStyle {
+            mapView.mapboxMap.getStyle {
                 mapView.location.updateSettings {
                     enabled = true
                     pulsingEnabled = true
@@ -462,6 +421,7 @@ class FirstFragment : Fragment() {
     }
 
 
+    @Deprecated("Deprecated in Java")
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         when (requestCode) {
             LOCATION_PERMISSION_REQUEST_CODE -> {
@@ -477,19 +437,11 @@ class FirstFragment : Fragment() {
         }
     }
 
-    override fun onStart() {
-        super.onStart()
-        mapView.onStart()
-    }
+
 
     override fun onResume() {
         super.onResume()
         checkLocationServices()
-    }
-
-    override fun onStop() {
-        super.onStop()
-        mapView.onStop()
     }
 
     override fun onDestroyView() {
@@ -500,9 +452,10 @@ class FirstFragment : Fragment() {
         connectivityManager.unregisterNetworkCallback(networkCallback)
     }
 
-    override fun onLowMemory() {
-        super.onLowMemory()
-        mapView.onLowMemory()
+    private fun updateWallet(amount: Double) {
+        val editor = sharedPreferences?.edit()
+        editor?.putFloat("wallet_balance", amount.toFloat())
+        editor?.apply()
     }
 
 }

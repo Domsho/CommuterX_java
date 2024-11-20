@@ -1,78 +1,87 @@
 package com.example.commuterx_java
 
-import android.os.Bundle
-import android.view.View
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.card.MaterialCardView
-import com.mapbox.geojson.Point
-import com.mapbox.maps.CameraOptions
-import com.mapbox.maps.MapView
-import com.mapbox.maps.Style
-import com.mapbox.search.SearchEngine
-import com.mapbox.search.SearchEngineSettings
-import com.mapbox.search.SearchOptions
-import com.mapbox.search.result.SearchSuggestion
-import com.mapbox.search.ResponseInfo
-import com.mapbox.search.SearchSuggestionsCallback
-import com.mapbox.search.SearchSelectionCallback
-import com.mapbox.search.result.SearchResult
-import android.widget.TextView
-import android.view.inputmethod.InputMethodManager
+import android.Manifest
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ObjectAnimator
-import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.Color
-import android.graphics.drawable.BitmapDrawable
-import android.graphics.drawable.Drawable
-import android.util.Log
-import android.view.animation.DecelerateInterpolator
-import android.view.animation.AccelerateInterpolator
-import android.widget.EditText
-import androidx.appcompat.widget.SearchView
-import com.mapbox.common.location.AccuracyAuthorization
-import com.mapbox.common.location.Location as MapboxLocation
-import com.mapbox.navigation.base.options.NavigationOptions
-import com.mapbox.navigation.core.lifecycle.MapboxNavigationApp
-import com.mapbox.navigation.core.MapboxNavigation
-import com.mapbox.common.location.LocationService
-import com.mapbox.common.location.LocationServiceFactory
-import com.mapbox.common.location.LocationServiceObserver
-import com.mapbox.common.location.PermissionStatus
-import com.mapbox.maps.ImageHolder
-import com.mapbox.maps.plugin.LocationPuck2D
-import com.mapbox.maps.plugin.locationcomponent.location
-import com.mapbox.navigation.core.lifecycle.MapboxNavigationObserver
-import com.mapbox.navigation.core.trip.session.LocationMatcherResult
-import com.mapbox.navigation.core.trip.session.LocationObserver
-import com.mapbox.navigation.ui.maps.location.NavigationLocationProvider
-import android.Manifest
+import android.animation.ValueAnimator
 import android.annotation.SuppressLint
+import android.content.pm.PackageManager
+import android.graphics.Color
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
+import android.view.View
+import android.view.animation.AccelerateInterpolator
+import android.view.animation.DecelerateInterpolator
+import android.view.inputmethod.InputMethodManager
+import android.widget.EditText
+import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.SearchView
 import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.card.MaterialCardView
 import com.mapbox.android.gestures.MoveGestureDetector
+import com.mapbox.api.directions.v5.models.RouteOptions
+import com.mapbox.common.location.AccuracyAuthorization
+import com.mapbox.common.location.LocationService
+import com.mapbox.common.location.LocationServiceFactory
+import com.mapbox.common.location.LocationServiceObserver
+import com.mapbox.common.location.PermissionStatus
+import com.mapbox.geojson.Point
+import com.mapbox.maps.CameraOptions
+import com.mapbox.maps.ImageHolder
+import com.mapbox.maps.MapView
+import com.mapbox.maps.MapboxMap
+import com.mapbox.maps.Style
+import com.mapbox.maps.plugin.LocationPuck2D
 import com.mapbox.maps.plugin.animation.MapAnimationOptions.Companion.mapAnimationOptions
 import com.mapbox.maps.plugin.animation.camera
 import com.mapbox.maps.plugin.gestures.OnMoveListener
 import com.mapbox.maps.plugin.gestures.gestures
 import com.mapbox.maps.plugin.locationcomponent.OnIndicatorBearingChangedListener
 import com.mapbox.maps.plugin.locationcomponent.OnIndicatorPositionChangedListener
+import com.mapbox.maps.plugin.locationcomponent.location
+import com.mapbox.navigation.base.extensions.applyDefaultNavigationOptions
+import com.mapbox.navigation.base.options.NavigationOptions
+import com.mapbox.navigation.base.route.NavigationRoute
+import com.mapbox.navigation.base.route.NavigationRouterCallback
+import com.mapbox.navigation.base.route.RouterFailure
+import com.mapbox.navigation.core.MapboxNavigation
 import com.mapbox.navigation.core.directions.session.RoutesObserver
+import com.mapbox.navigation.core.lifecycle.MapboxNavigationApp
+import com.mapbox.navigation.core.lifecycle.MapboxNavigationObserver
+import com.mapbox.navigation.core.trip.session.LocationMatcherResult
+import com.mapbox.navigation.core.trip.session.LocationObserver
 import com.mapbox.navigation.core.trip.session.RouteProgressObserver
 import com.mapbox.navigation.ui.maps.camera.NavigationCamera
 import com.mapbox.navigation.ui.maps.camera.data.MapboxNavigationViewportDataSource
-import com.mapbox.maps.MapboxMap
-import com.mapbox.maps.extension.style.expressions.generated.Expression.Companion.interpolate
+import com.mapbox.navigation.ui.maps.location.NavigationLocationProvider
+import com.mapbox.navigation.ui.maps.puck.LocationPuckOptions
+import com.mapbox.navigation.ui.maps.route.line.api.MapboxRouteLineApi
+import com.mapbox.navigation.ui.maps.route.line.api.MapboxRouteLineView
+import com.mapbox.navigation.ui.maps.route.line.model.MapboxRouteLineApiOptions
+import com.mapbox.navigation.ui.maps.route.line.model.MapboxRouteLineViewOptions
+import com.mapbox.search.ResponseInfo
+import com.mapbox.search.SearchEngine
+import com.mapbox.search.SearchEngineSettings
+import com.mapbox.search.SearchOptions
+import com.mapbox.search.SearchSelectionCallback
+import com.mapbox.search.SearchSuggestionsCallback
+import com.mapbox.search.result.SearchResult
+import com.mapbox.search.result.SearchSuggestion
+import com.mapbox.common.location.Location as MapboxLocation
 
 
 class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, MapboxNavigationObserver {
@@ -90,13 +99,30 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
     private var mapboxNavigation: MapboxNavigation? = null
     private lateinit var locationService: LocationService
     private lateinit var navigationLocationProvider: NavigationLocationProvider
-    private val locationObserver = MyLocationObserver()
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private val LOCATION_PERMISSION_REQUEST_CODE = 1
     private lateinit var navigationCamera: NavigationCamera
     private lateinit var viewportDataSource: MapboxNavigationViewportDataSource
     private lateinit var mapboxMap: MapboxMap
-
+    private lateinit var trackRouteButton: MaterialButton
+    private lateinit var routeLineApi: MapboxRouteLineApi
+    private lateinit var routeLineView: MapboxRouteLineView
+    private var totalDistance = 0.0
+    private var pricePerKilometer = 30.0
+    private val locationObserver = object : LocationObserver {
+        override fun onNewRawLocation(rawLocation: MapboxLocation) {}
+        override fun onNewLocationMatcherResult(locationMatcherResult: LocationMatcherResult) {
+            val transitionOptions: (ValueAnimator.() -> Unit) = {
+                duration = 1000
+            }
+            navigationLocationProvider.changePosition(
+                location = locationMatcherResult.enhancedLocation,
+                keyPoints = locationMatcherResult.keyPoints,
+                latLngTransitionOptions = transitionOptions,
+                bearingTransitionOptions = transitionOptions
+            )
+        }
+    }
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -112,12 +138,11 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
         scrim = findViewById(R.id.scrim)
         navigationLocationProvider = NavigationLocationProvider()
 
-
         try {
 
             setContentView(R.layout.full_screen_map)
             Log.e("LocationDebug", "setContentView called")
-
+            trackRouteButton = findViewById(R.id.trackRouteButton)
 
             initializeViews()
             setupMapboxNavigation()
@@ -127,8 +152,32 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
             setupSearch()
             setupRecyclerView()
             setupLocationUpdates()
+            setTestWalletBalance(1000.0)
 
+            trackRouteButton.setOnClickListener {
+                selectedLocationPoint?.let { destination ->
+                    fetchRoute(destination) // Pass the selected destination
+                    Log.d("TrackRoute", "Fetching route to: $destination")
+                } ?: run {
+                    Toast.makeText(this, "Please select a destination", Toast.LENGTH_SHORT).show()
+                }
+                handleTrackRoute()
+            }
 
+            val routeLineApiOptions = MapboxRouteLineApiOptions.Builder()
+                .vanishingRouteLineEnabled(true) // Enable vanishing route line feature
+                .build()
+            routeLineApi = MapboxRouteLineApi(routeLineApiOptions)
+
+            val routeLineViewOptions = MapboxRouteLineViewOptions.Builder(this)
+                .displaySoftGradientForTraffic(true)
+                .softGradientTransition(30.0)
+                .build()
+            routeLineView = MapboxRouteLineView(routeLineViewOptions)
+
+            mapView.mapboxMap.loadStyleUri(Style.MAPBOX_STREETS) {
+                setupObservers()
+            }
 
             searchView.requestFocus()
             searchView.postDelayed({
@@ -140,6 +189,129 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
         } catch (e: Exception) {
             Log.e("LocationDebug", "Exception in onCreate: ${e.message}", e)
         }
+    }
+
+    private fun setupObservers() {
+        // Register RoutesObserver
+        mapboxNavigation?.registerRoutesObserver(routesObserver)
+
+        // Register RouteProgressObserver
+        mapboxNavigation?.registerRouteProgressObserver(routeProgressObserver)
+    }
+
+    private fun fetchRoute(destination: Point) {
+        // Get current location from navigationLocationProvider
+        val currentLocation = navigationLocationProvider.lastLocation
+        val origin = currentLocation?.let {
+            Point.fromLngLat(it.longitude, it.latitude)
+        } ?: return // Exit if no current location
+
+        // Log the coordinates for debugging
+        Log.d("RouteDebug", "Origin: ${origin.longitude()}, ${origin.latitude()}")
+        Log.d("RouteDebug", "Destination: ${destination.longitude()}, ${destination.latitude()}")
+
+        // Check if coordinates are valid
+        if (!areValidCoordinates(origin) || !areValidCoordinates(destination)) {
+            Log.e("RouteDebug", "Invalid coordinates detected")
+            Toast.makeText(this, "Invalid coordinates", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val routeOptions = RouteOptions.builder()
+            .applyDefaultNavigationOptions()
+            .coordinatesList(listOf(origin, destination)) // Use coordinatesList instead of coordinates
+            .build()
+
+        mapboxNavigation?.requestRoutes(
+            routeOptions,
+            object : NavigationRouterCallback {
+                override fun onCanceled(routeOptions: RouteOptions, routerOrigin: String) {
+                    Log.d("RouteDebug", "Route request cancelled")
+                }
+
+                override fun onFailure(reasons: List<RouterFailure>, routeOptions: RouteOptions) {
+                    Log.e("RouteDebug", "Route request failed: $reasons")
+                    runOnUiThread {
+                        Toast.makeText(
+                            this@FullScreenMapActivity,
+                            "Failed to get route",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+
+                override fun onRoutesReady(routes: List<NavigationRoute>, routerOrigin: String) {
+                    Log.d("RouteDebug", "Routes ready: ${routes.size} routes received")
+                    routeLineApi.setNavigationRoutes(routes) { value ->
+                        mapView.getMapboxMap().getStyle()?.let { style ->
+                            routeLineView.renderRouteDrawData(style, value)
+                        }
+                    }
+
+                    // Add these lines to hide the search UI and details card
+                    runOnUiThread {
+                        hideSearchUI()
+                        hideDetailsCard()
+                    }
+                }
+            }
+        )
+    }
+
+    // Helper function to validate coordinates
+    private fun areValidCoordinates(point: Point): Boolean {
+        return point.latitude() in -90.0..90.0 &&
+               point.longitude() in -180.0..180.0
+    }
+
+    private fun handleTrackRoute() {
+        Log.d("TrackRoute", "Track route button clicked")
+        val paymentSuccess = simulatePayment()
+
+        if (paymentSuccess) {
+            Log.d("TrackRoute", "Payment simulation successful")
+            val currentBalance = getWalletBalance()
+            Log.d("TrackRoute", "Current wallet balance: $currentBalance")
+
+            if (currentBalance >= 10.0) {
+                updateWallet(currentBalance - 10.0)
+                Log.d("TrackRoute", "Wallet updated. New balance: ${currentBalance - 10.0}")
+                startTrackingRoute()
+            } else {
+                Log.d("TrackRoute", "Insufficient funds in wallet.")
+                Toast.makeText(this, "Insufficient funds in wallet.", Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            Log.d("TrackRoute", "Payment simulation failed")
+            Toast.makeText(this, "Payment failed. Please try again.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun setTestWalletBalance(amount: Double) {
+        val sharedPreferences = getSharedPreferences("MySharedPref", MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
+        editor.putFloat("wallet_balance", amount.toFloat())
+        editor.apply()
+        Log.d("WalletBalance", "Test wallet balance set to: $amount")
+    }
+
+    private fun updateWallet(amount: Double) {
+        val sharedPreferences = getSharedPreferences("MySharedPref", MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
+        editor.putFloat("wallet_balance", amount.toFloat())
+        editor.apply()
+    }
+
+    private fun simulatePayment(): Boolean {
+        // Simulate a payment process (replace with actual payment logic)
+        Toast.makeText(this, "Payment Process Started", Toast.LENGTH_SHORT).show()
+        return true // Simulate successful payment
+    }
+
+    private fun startTrackingRoute() {
+        // Logic to start tracking the route
+        Log.d("FullScreenMapActivity", "Tracking route...")
+        // You can add your route tracking logic here
     }
 
     private fun setupMapboxNavigation() {
@@ -165,11 +337,10 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
                 Log.e("LocationDebug", "Failed to obtain MapboxNavigation instance, retrying in 1 second (Attempt ${retryCount + 1}/$maxRetries)")
                 retryCount++
                 handler.postDelayed({ retryObtainingNavigation() }, 1000) // Retry after 1 second
-            } else if (mapboxNavigation == null) {
-                Log.e("LocationDebug", "Failed to obtain MapboxNavigation instance after $maxRetries attempts")
-            } else {
-                Log.e("LocationDebug", "MapboxNavigation obtained successfully")
-                initializeMapboxComponents()
+            } else if (mapboxNavigation != null) {
+                Log.d("LocationDebug", "MapboxNavigation instance obtained successfully")
+                initializeNavigation() // Call initializeNavigation here
+                // Register observers here if needed
             }
         }
 
@@ -177,7 +348,7 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
     }
 
     private fun initializeMapboxComponents() {
-        mapboxMap = mapView.getMapboxMap()
+        mapboxMap = mapView.mapboxMap
         Log.e("LocationDebug", "MapboxMap obtained")
 
         Log.e("LocationDebug", "MapboxNavigation instance is valid")
@@ -194,13 +365,17 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
 
         setInitialMapStyle()
 
-        mapboxMap.loadStyleUri(Style.MAPBOX_STREETS) { style ->
-            Log.e("LocationDebug", "Map style loaded")
-            Handler(Looper.getMainLooper()).postDelayed({
+        loadStyle()
+    }
+
+    private fun loadStyle() {
+        mapboxMap.loadStyleUri(Style.MAPBOX_STREETS) {
+                Log.e("LocationDebug", "Map style loaded")
+                // Set initial camera position with high zoom
+                updateCamera(mapView.mapboxMap.cameraState.center, 19.0, false)
                 enableLocationComponent()
                 initializeNavigation()
                 centerOnUserLocation()
-            }, 1000) // 1 second delay
         }
     }
 
@@ -221,7 +396,7 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
 
         locationService = LocationServiceFactory.getOrCreate()
 
-        checkLocationPermission()
+        checkLocationPermission() // Ensure permission is checked
     }
 
     @SuppressLint("MissingPermission")
@@ -233,9 +408,11 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
         }
 
         try {
+            // Register the location observer
             mapboxNavigation?.registerLocationObserver(locationObserver)
             Log.e("LocationDebug", "Location observer registered")
 
+            // Start the trip session
             mapboxNavigation?.startTripSession()
             Log.e("LocationDebug", "Trip session started")
         } catch (e: Exception) {
@@ -273,45 +450,58 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
 
     private fun enableLocationComponent() {
         Log.e("LocationDebug", "Enabling location component")
-        mapView.location.updateSettings {
-            enabled = true
-            pulsingEnabled = true
-        }
+
+        // Initialize location component with navigation provider
         mapView.location.apply {
             setLocationProvider(navigationLocationProvider)
+            addOnIndicatorPositionChangedListener(onIndicatorPositionChangedListener)
+            puckBearingEnabled = true
             enabled = true
 
-            // Create and set the location puck
+            // Create and set the location puck with options (keeping your existing puck configuration)
             locationPuck = LocationPuck2D(
-                bearingImage = ImageHolder.from(R.drawable.mapbox_puck),
+                bearingImage = ImageHolder.from(R.drawable.mapbox_puck)
             )
         }
-        mapView.location.addOnIndicatorPositionChangedListener(onIndicatorPositionChangedListener)
-        mapView.location.addOnIndicatorBearingChangedListener(onIndicatorBearingChangedListener)
+
+        // Register the location observer with navigation
+        mapboxNavigation?.registerLocationObserver(locationObserver)
+
         Log.e("LocationDebug", "Location component enabled: ${mapView.location.enabled}")
     }
 
     @SuppressLint("MissingPermission")
     private fun centerOnUserLocation() {
-        Log.e("LocationDebug", "Attempting to center on user location")
-        val locationRequest = LocationRequest.create().apply {
-            priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-            interval = 0
-            fastestInterval = 0
-            numUpdates = 1
-        }
-
-        fusedLocationClient.requestLocationUpdates(locationRequest, object : LocationCallback() {
-            override fun onLocationResult(locationResult: LocationResult) {
-                Log.e("LocationDebug", "Location update received")
-                locationResult.lastLocation?.let { location ->
-                    Log.e("LocationDebug", "Centering on location: ${location.latitude}, ${location.longitude}")
-                    val point = Point.fromLngLat(location.longitude, location.latitude)
-                    updateCamera(point)
-                } ?: Log.e("LocationDebug", "Location is null")
-                fusedLocationClient.removeLocationUpdates(this)
+        mapView.location.addOnIndicatorPositionChangedListener { point ->
+            // Calculate distance from previous location to current location
+            val currentLocation = android.location.Location("current").apply {
+                latitude = point.latitude()
+                longitude = point.longitude()
             }
-        }, Looper.getMainLooper())
+
+            // Assuming you have a way to get the previous location
+            val previousLocation = getPreviousLocation()
+
+
+            val distance = currentLocation.distanceTo(previousLocation) / 1000 // Convert to kilometers
+            totalDistance += distance // Update total distance
+            updateWallet(totalDistance * pricePerKilometer) // Update wallet based on distance
+
+
+            // Set camera to the new location
+            mapView.mapboxMap.setCamera(
+                CameraOptions.Builder()
+                    .center(point)
+                    .zoom(20.0)
+                    .pitch(65.0)
+                    .build()
+            )
+        }
+    }
+
+    private fun getPreviousLocation() {
+        // Retrieve the last known location from shared preferences or another source
+        // Return a Location object or null if not available
     }
 
     private val onMoveListener = object : OnMoveListener {
@@ -333,14 +523,22 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
     }
 
     private val onIndicatorBearingChangedListener = OnIndicatorBearingChangedListener {
-        mapView.getMapboxMap().setCamera(CameraOptions.Builder().bearing(it).build())
+        mapView.mapboxMap.setCamera(CameraOptions.Builder().bearing(it).build())
     }
 
     private val onIndicatorPositionChangedListener = OnIndicatorPositionChangedListener { point ->
         Log.e("LocationDebug", "Indicator position changed: ${point.latitude()}, ${point.longitude()}")
         updateCamera(point)
-        viewportDataSource.onLocationChanged(point.toLocation())
-        viewportDataSource.evaluate()
+    }
+
+    private fun updateNavigationPuck(location: MapboxLocation) {
+        navigationLocationProvider.changePosition(
+            location = location,
+            keyPoints = emptyList(),
+            bearingTransitionOptions = {
+                duration = 1000
+            }
+        )
     }
 
     private fun updateCamera(point: Point, zoom: Double = 17.0, animate: Boolean = true) {
@@ -357,16 +555,16 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
                 }
             )
         } else {
-            mapView.getMapboxMap().setCamera(cameraOptions)
+            mapView.mapboxMap.setCamera(cameraOptions)
         }
-        mapView.gestures.focalPoint = mapView.getMapboxMap().pixelForCoordinate(point)
+        mapView.gestures.focalPoint = mapView.mapboxMap.pixelForCoordinate(point)
     }
 
     private fun setInitialMapStyle() {
         mapboxMap.loadStyleUri(Style.MAPBOX_STREETS) {
             Log.e("LocationDebug", "Map style loaded")
             // Set initial camera position with high zoom
-            updateCamera(mapView.getMapboxMap().cameraState.center, 19.0, false)
+            updateCamera(mapView.mapboxMap.cameraState.center, 19.0, false)
             enableLocationComponent()
             initializeNavigation()
             centerOnUserLocation()
@@ -380,27 +578,6 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
             .build()
     }
 
-    private fun ImageHolder.Companion.from(drawable: Drawable): ImageHolder {
-        return from(drawable.toBitmap())
-    }
-
-
-    private fun Drawable.toBitmap(): Bitmap {
-        if (this is BitmapDrawable) return bitmap
-
-        val bitmap = if (intrinsicWidth <= 0 || intrinsicHeight <= 0) {
-            Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
-        } else {
-            Bitmap.createBitmap(intrinsicWidth, intrinsicHeight, Bitmap.Config.ARGB_8888)
-        }
-
-        android.graphics.Canvas(bitmap).apply {
-            setBounds(0, 0, width, height)
-            draw(this)
-        }
-
-        return bitmap
-    }
 
     private fun setupLocationUpdates() {
         Log.e("LocationDebug", "Setting up location updates")
@@ -525,12 +702,18 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
 
     private fun setupRecyclerView() {
         searchResultsAdapter = SearchResultsAdapter { searchSuggestion ->
+            // Hide keyboard when a search result is clicked
+            val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+            currentFocus?.let {
+                imm.hideSoftInputFromWindow(it.windowToken, 0)
+            }
+
             searchEngine.select(searchSuggestion, object : SearchSelectionCallback {
                 override fun onResult(suggestion: SearchSuggestion, result: SearchResult, responseInfo: ResponseInfo) {
-                    result.coordinate?.let { coordinate ->
+                    result.coordinate.let { coordinate ->
                         Log.e("SearchDebug", "Search result coordinates: ${coordinate.latitude()}, ${coordinate.longitude()}")
                         selectedLocationPoint = Point.fromLngLat(coordinate.longitude(), coordinate.latitude())
-                        mapView.getMapboxMap().setCamera(
+                        mapView.mapboxMap.setCamera(
                             CameraOptions.Builder()
                                 .center(selectedLocationPoint)
                                 .zoom(14.0)
@@ -608,29 +791,28 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
         updateCamera(point)
     }
 
-    private inner class MyLocationObserver : LocationObserver {
-        override fun onNewRawLocation(rawLocation: MapboxLocation) {
-            Log.e("LocationObserver", "New raw location: ${rawLocation.latitude}, ${rawLocation.longitude}")
-        }
 
-        override fun onNewLocationMatcherResult(locationMatcherResult: LocationMatcherResult) {
-            val enhancedLocation = locationMatcherResult.enhancedLocation
-            Log.e("LocationObserver", "New enhanced location: ${enhancedLocation.latitude}, ${enhancedLocation.longitude}")
-            navigationLocationProvider.changePosition(
-                location = enhancedLocation,
-                keyPoints = locationMatcherResult.keyPoints,
-            )
-
-            viewportDataSource.onLocationChanged(enhancedLocation)
-            viewportDataSource.evaluate()
-
-            updateCameraToLocation(enhancedLocation)
-        }
-    }
 
     private val routeProgressObserver = RouteProgressObserver { routeProgress ->
         viewportDataSource.onRouteProgressChanged(routeProgress)
         viewportDataSource.evaluate()
+
+        // Calculate the distance traveled
+        val distanceTraveled = routeProgress.distanceTraveled // in meters
+        val distanceInKilometers = distanceTraveled / 1000 // convert to kilometers
+
+        // Calculate the price
+        val pricePerKilometer = 30.0 // in Philippine pesos
+        val totalPrice = distanceInKilometers * pricePerKilometer
+
+        // Update the wallet balance
+        val currentBalance = getWalletBalance()
+        if (currentBalance >= totalPrice) {
+            updateWallet(currentBalance - totalPrice)
+            Log.d("PriceUpdate", "Price deducted: $totalPrice. New balance: ${currentBalance - totalPrice}")
+        } else {
+            Log.d("PriceUpdate", "Insufficient funds. Current balance: $currentBalance, required: $totalPrice")
+        }
     }
 
     override fun onDestroy() {
@@ -644,11 +826,16 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
     @SuppressLint("MissingPermission")
     override fun onAttached(mapboxNavigation: MapboxNavigation) {
         Log.e("LocationDebug", "onAttached called")
+
+        // Unregister any previously registered observers to avoid duplicates
+        mapboxNavigation.unregisterLocationObserver(locationObserver)
+        mapboxNavigation.unregisterRouteProgressObserver(routeProgressObserver)
+        mapboxNavigation.unregisterRoutesObserver(routesObserver)
+
+        // Register the observers
         mapboxNavigation.registerLocationObserver(locationObserver)
         mapboxNavigation.registerRouteProgressObserver(routeProgressObserver)
         mapboxNavigation.registerRoutesObserver(routesObserver)
-        mapboxNavigation.startTripSession()
-        Log.e("LocationDebug", "Observers registered and trip session started in onAttached")
     }
 
     override fun onDetached(mapboxNavigation: MapboxNavigation) {
@@ -656,4 +843,26 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
         mapboxNavigation.unregisterRouteProgressObserver(routeProgressObserver)
         mapboxNavigation.unregisterRoutesObserver(routesObserver)
     }
+
+    private fun getWalletBalance(): Float {
+        val sharedPreferences = getSharedPreferences("MySharedPref", MODE_PRIVATE)
+        return sharedPreferences.getFloat("wallet_balance", 0f)
+    }
+
+    // Add this new helper function
+    private fun hideSearchUI() {
+        searchResultsRecyclerView.visibility = View.GONE
+        searchView.setQuery("", false)
+        searchView.clearFocus()
+
+        // Hide keyboard
+        val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+        currentFocus?.let {
+            imm.hideSoftInputFromWindow(it.windowToken, 0)
+        }
+    }
+}
+
+private fun android.location.Location.distanceTo(previousLocation: Unit): Float {
+    return this.distanceTo(previousLocation)
 }
