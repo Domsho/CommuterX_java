@@ -68,7 +68,6 @@ import com.mapbox.navigation.core.trip.session.RouteProgressObserver
 import com.mapbox.navigation.ui.maps.camera.NavigationCamera
 import com.mapbox.navigation.ui.maps.camera.data.MapboxNavigationViewportDataSource
 import com.mapbox.navigation.ui.maps.location.NavigationLocationProvider
-import com.mapbox.navigation.ui.maps.puck.LocationPuckOptions
 import com.mapbox.navigation.ui.maps.route.line.api.MapboxRouteLineApi
 import com.mapbox.navigation.ui.maps.route.line.api.MapboxRouteLineView
 import com.mapbox.navigation.ui.maps.route.line.model.MapboxRouteLineApiOptions
@@ -82,6 +81,7 @@ import com.mapbox.search.SearchSuggestionsCallback
 import com.mapbox.search.result.SearchResult
 import com.mapbox.search.result.SearchSuggestion
 import com.mapbox.common.location.Location as MapboxLocation
+import com.mapbox.navigation.ui.maps.route.line.model.RouteLineColorResources
 
 
 class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, MapboxNavigationObserver {
@@ -110,17 +110,32 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
     private var totalDistance = 0.0
     private var pricePerKilometer = 30.0
     private val locationObserver = object : LocationObserver {
-        override fun onNewRawLocation(rawLocation: MapboxLocation) {}
+        override fun onNewRawLocation(rawLocation: MapboxLocation) {
+            Log.d("Navigation", "Raw location update received")
+        }
+
         override fun onNewLocationMatcherResult(locationMatcherResult: LocationMatcherResult) {
-            val transitionOptions: (ValueAnimator.() -> Unit) = {
-                duration = 1000
-            }
+            val location = locationMatcherResult.enhancedLocation
+            val point = Point.fromLngLat(location.longitude, location.latitude)
+            Log.d("Navigation", "New matched location: ${point.latitude()}, ${point.longitude()}")
+
+            // Update navigation location provider
             navigationLocationProvider.changePosition(
                 location = locationMatcherResult.enhancedLocation,
                 keyPoints = locationMatcherResult.keyPoints,
-                latLngTransitionOptions = transitionOptions,
-                bearingTransitionOptions = transitionOptions
             )
+
+            // Update the route line
+            val result = routeLineApi.updateTraveledRouteLine(point)
+            if (result != null) {
+                Log.d("Navigation", "Route line update available")
+                mapView.getMapboxMap().getStyle()?.let { style ->
+                    routeLineView.renderRouteLineUpdate(style, result)
+                    Log.d("Navigation", "Route line rendered")
+                }
+            } else {
+                Log.e("Navigation", "Failed to update route line - null result")
+            }
         }
     }
 
@@ -156,24 +171,11 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
 
             trackRouteButton.setOnClickListener {
                 selectedLocationPoint?.let { destination ->
-                    fetchRoute(destination) // Pass the selected destination
-                    Log.d("TrackRoute", "Fetching route to: $destination")
-                } ?: run {
-                    Toast.makeText(this, "Please select a destination", Toast.LENGTH_SHORT).show()
+                    fetchRoute(destination)  // This will trigger the routesObserver
                 }
-                handleTrackRoute()
             }
 
-            val routeLineApiOptions = MapboxRouteLineApiOptions.Builder()
-                .vanishingRouteLineEnabled(true) // Enable vanishing route line feature
-                .build()
-            routeLineApi = MapboxRouteLineApi(routeLineApiOptions)
-
-            val routeLineViewOptions = MapboxRouteLineViewOptions.Builder(this)
-                .displaySoftGradientForTraffic(true)
-                .softGradientTransition(30.0)
-                .build()
-            routeLineView = MapboxRouteLineView(routeLineViewOptions)
+            initializeRouteLine()
 
             mapView.mapboxMap.loadStyleUri(Style.MAPBOX_STREETS) {
                 setupObservers()
@@ -189,6 +191,47 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
         } catch (e: Exception) {
             Log.e("LocationDebug", "Exception in onCreate: ${e.message}", e)
         }
+    }
+
+
+    private fun initializeRouteLine() {
+        // Create API options
+        val apiOptions = MapboxRouteLineApiOptions.Builder()
+            .vanishingRouteLineEnabled(true)  // This enables the vanishing route line feature
+            .build()
+
+        // Create view options
+        val viewOptions = MapboxRouteLineViewOptions.Builder(this)
+            .routeLineColorResources(RouteLineColorResources.Builder().build())
+            .slotName("road-label")
+            .build()
+
+        routeLineApi = MapboxRouteLineApi(apiOptions)
+        routeLineView = MapboxRouteLineView(viewOptions)
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun startNavigation(routes: List<NavigationRoute>) {
+        Log.d("Navigation", "Starting navigation with ${routes.size} routes")
+
+        mapboxNavigation?.let { navigation ->
+            // First stop any existing trip session
+            navigation.stopTripSession()
+
+            // Set the routes
+            navigation.setNavigationRoutes(routes)
+
+            // Start the trip session
+            navigation.startTripSession()
+            Log.d("Navigation", "Trip session started")
+
+            // Register observers if not already registered
+            navigation.registerLocationObserver(locationObserver)
+            navigation.registerRouteProgressObserver(routeProgressObserver)
+
+            // Hide search UI
+            hideSearchUI()
+        } ?: Log.e("Navigation", "MapboxNavigation is null")
     }
 
     private fun setupObservers() {
@@ -240,18 +283,21 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
                     }
                 }
 
+                @SuppressLint("MissingPermission")
                 override fun onRoutesReady(routes: List<NavigationRoute>, routerOrigin: String) {
-                    Log.d("RouteDebug", "Routes ready: ${routes.size} routes received")
-                    routeLineApi.setNavigationRoutes(routes) { value ->
-                        mapView.getMapboxMap().getStyle()?.let { style ->
-                            routeLineView.renderRouteDrawData(style, value)
-                        }
-                    }
+                    Log.d("Navigation", "Routes ready: ${routes.size} routes received")
 
-                    // Add these lines to hide the search UI and details card
                     runOnUiThread {
-                        hideSearchUI()
-                        hideDetailsCard()
+                        // First set the routes for the route line
+                        routeLineApi.setNavigationRoutes(routes) { value ->
+                            mapView.getMapboxMap().getStyle()?.let { style ->
+                                routeLineView.renderRouteDrawData(style, value)
+                                Log.d("Navigation", "Initial route line rendered")
+                            }
+                        }
+
+                        // Then start navigation
+                        startNavigation(routes)
                     }
                 }
             }
@@ -420,13 +466,20 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
         }
     }
 
-    private val routesObserver = RoutesObserver { routeUpdateResult ->
-        if (routeUpdateResult.navigationRoutes.isNotEmpty()) {
-            viewportDataSource.onRouteChanged(routeUpdateResult.navigationRoutes.first())
-            viewportDataSource.evaluate()
-        } else {
-            viewportDataSource.clearRouteData()
-            viewportDataSource.evaluate()
+    @SuppressLint("MissingPermission")
+    private val routesObserver = RoutesObserver { result ->
+        Log.d("Navigation", "Routes observer triggered with ${result.navigationRoutes?.size} routes")
+
+        result.navigationRoutes?.let { routes ->
+            // First set the routes for the route line
+            routeLineApi.setNavigationRoutes(routes) { value ->
+                mapView.getMapboxMap().getStyle()?.let { style ->
+                    routeLineView.renderRouteDrawData(style, value)
+                }
+            }
+
+            // Start navigation with the routes
+            startNavigation(routes)
         }
     }
 
@@ -449,25 +502,20 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
     }
 
     private fun enableLocationComponent() {
-        Log.e("LocationDebug", "Enabling location component")
+        Log.d("Navigation", "Enabling location component")
 
-        // Initialize location component with navigation provider
         mapView.location.apply {
             setLocationProvider(navigationLocationProvider)
+            // Remove duplicate listener registration
+            removeOnIndicatorPositionChangedListener(onIndicatorPositionChangedListener)
             addOnIndicatorPositionChangedListener(onIndicatorPositionChangedListener)
-            puckBearingEnabled = true
             enabled = true
+            puckBearingEnabled = true
 
-            // Create and set the location puck with options (keeping your existing puck configuration)
             locationPuck = LocationPuck2D(
                 bearingImage = ImageHolder.from(R.drawable.mapbox_puck)
             )
         }
-
-        // Register the location observer with navigation
-        mapboxNavigation?.registerLocationObserver(locationObserver)
-
-        Log.e("LocationDebug", "Location component enabled: ${mapView.location.enabled}")
     }
 
     @SuppressLint("MissingPermission")
@@ -527,8 +575,17 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
     }
 
     private val onIndicatorPositionChangedListener = OnIndicatorPositionChangedListener { point ->
-        Log.e("LocationDebug", "Indicator position changed: ${point.latitude()}, ${point.longitude()}")
+        Log.d("Navigation", "Position changed: ${point.latitude()}, ${point.longitude()}")
         updateCamera(point)
+
+        // Update the route line to follow the user's position
+        routeLineApi.updateTraveledRouteLine(point)?.let { result ->
+            Log.d("Navigation", "Updating route line")
+            mapView.getMapboxMap().getStyle()?.let { style ->
+                routeLineView.renderRouteLineUpdate(style, result)
+                Log.d("Navigation", "Route line updated")
+            }
+        } ?: Log.d("Navigation", "Failed to update route line")
     }
 
     private fun updateNavigationPuck(location: MapboxLocation) {
@@ -797,6 +854,12 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
         viewportDataSource.onRouteProgressChanged(routeProgress)
         viewportDataSource.evaluate()
 
+        routeLineApi.updateWithRouteProgress(routeProgress) { result ->
+            mapView.getMapboxMap().getStyle()?.let { style ->
+                routeLineView.renderRouteLineUpdate(style, result)
+            }
+        }
+
         // Calculate the distance traveled
         val distanceTraveled = routeProgress.distanceTraveled // in meters
         val distanceInKilometers = distanceTraveled / 1000 // convert to kilometers
@@ -817,6 +880,10 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
 
     override fun onDestroy() {
         super.onDestroy()
+        mapView.location.removeOnIndicatorPositionChangedListener(onIndicatorPositionChangedListener)
+        routeLineApi.cancel()
+        routeLineView.cancel()
+
         locationService.unregisterObserver(this)
         mapboxNavigation?.stopTripSession()
         MapboxNavigationApp.detach(this)
