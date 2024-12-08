@@ -44,6 +44,10 @@ import com.mapbox.maps.plugin.locationcomponent.location
 import com.mapbox.maps.plugin.scalebar.scalebar
 import com.mapbox.search.SearchEngine
 import com.mapbox.search.SearchEngineSettings
+import com.google.android.material.bottomnavigation.BottomNavigationView
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
+
 
 
 class FirstFragment : Fragment() {
@@ -58,6 +62,10 @@ class FirstFragment : Fragment() {
     private lateinit var mapboxMap: com.mapbox.maps.MapboxMap
     private lateinit var connectivityManager: ConnectivityManager
     private var isLocationTrackingEnabled = false
+    private lateinit var bottomNavigation: BottomNavigationView
+    private lateinit var walletBalanceTextView: TextView
+    private var walletUpdateReceiver: BroadcastReceiver? = null
+
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
@@ -133,10 +141,24 @@ class FirstFragment : Fragment() {
         registerNetworkCallback()
         setupPermissions()
 
-
-
         val settings = SearchEngineSettings(null)
         searchEngine = SearchEngine.createSearchEngineWithBuiltInDataProviders(settings)
+
+        walletBalanceTextView = view.findViewById(R.id.wallet_balance)
+        updateWalletDisplay()
+
+        walletUpdateReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                if (intent?.action == "WALLET_BALANCE_UPDATED") {
+                    val balance = intent.getDoubleExtra("balance", 0.0)
+                    walletBalanceTextView.text = "₱%.2f".format(balance)
+                }
+            }
+        }
+        requireActivity().registerReceiver(
+            walletUpdateReceiver,
+            IntentFilter("WALLET_BALANCE_UPDATED"), Context.RECEIVER_NOT_EXPORTED
+        )
 
         setupMapbox()
         setupFirebase(view)
@@ -163,8 +185,44 @@ class FirstFragment : Fragment() {
             navigateToFullScreenMap()
         }
 
+        bottomNavigation = view.findViewById(R.id.bottom_navigation)
+        setupBottomNavigation()
+
 
         return view
+    }
+
+
+    private fun updateWalletDisplay() {
+        val sharedPreferences = requireActivity().getSharedPreferences(
+            "MySharedPref",
+            Context.MODE_PRIVATE
+        )
+        val balance = sharedPreferences.getFloat("wallet_balance", 1000f)
+        walletBalanceTextView.text = "₱%.2f".format(balance)
+    }
+
+
+    private fun setupBottomNavigation() {
+        // Set home as selected when fragment is created/shown
+        bottomNavigation.selectedItemId = R.id.navigation_home
+
+        bottomNavigation.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.navigation_settings -> {
+                    val intent = Intent(requireContext(), SettingsActivity::class.java)
+                    // First start the new activity
+                    startActivity(intent)
+                    // Then apply the transition animation to the entire activity
+                    requireActivity().overridePendingTransition(R.animator.slide_in_right, R.animator.slide_out_left)
+                    true // Changed to true to indicate we handled the selection
+                }
+                R.id.navigation_home -> {
+                    true
+                }
+                else -> false
+            }
+        }
     }
 
 
@@ -441,6 +499,8 @@ class FirstFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        // Set home as selected when returning to the fragment
+        bottomNavigation.selectedItemId = R.id.navigation_home
         checkLocationServices()
     }
 
@@ -450,6 +510,11 @@ class FirstFragment : Fragment() {
             mapView.location.removeOnIndicatorPositionChangedListener(listener)
         }
         connectivityManager.unregisterNetworkCallback(networkCallback)
+
+        // Add this block
+        walletUpdateReceiver?.let {
+            requireActivity().unregisterReceiver(it)
+        }
     }
 
     private fun updateWallet(amount: Double) {

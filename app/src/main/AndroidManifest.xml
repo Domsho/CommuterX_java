@@ -32,6 +32,7 @@
             android:name=".HomeActivity"
             android:exported="false"
             android:theme="@style/Theme.CommuterX_java" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -41,6 +42,7 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+
         <activity
             android:name=".FullScreenMapActivity"
             android:exported="false" />
@@ -76,15 +78,20 @@
             </intent-filter>
         </activity>
 
-
         <activity
             android:name=".SignupActivity"
             android:exported="false"
             android:theme="@style/Theme.CommuterX_java" />
+
         <activity
             android:name=".LoadingActivity"
             android:exported="false"
             android:theme="@style/Theme.CommuterX_java">
             </activity>
+
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false"/>
+
     </application>
 </manifest>

@@ -4,7 +4,6 @@ import android.Manifest
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ObjectAnimator
-import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.graphics.Color
@@ -82,6 +81,12 @@ import com.mapbox.search.result.SearchResult
 import com.mapbox.search.result.SearchSuggestion
 import com.mapbox.common.location.Location as MapboxLocation
 import com.mapbox.navigation.ui.maps.route.line.model.RouteLineColorResources
+import com.mapbox.navigation.core.trip.session.TripSessionState
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.widget.LinearLayout
 
 
 class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, MapboxNavigationObserver {
@@ -109,6 +114,21 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
     private lateinit var routeLineView: MapboxRouteLineView
     private var totalDistance = 0.0
     private var pricePerKilometer = 30.0
+    private lateinit var busFareTextView: TextView
+    private lateinit var jeepFareTextView: TextView
+    private lateinit var uvFareTextView: TextView
+    private lateinit var trainFareTextView: TextView
+    private var selectedTransportType: String? = null
+
+
+    companion object {
+        // Get base rates from FirstFragment's layout values
+        private const val BUS_RATE = 10.0  // Bus: ₱10.00 / km
+        private const val JEEP_RATE = 6.0  // Jeep: ₱6.00 / km
+        private const val UV_RATE = 12.0   // UV: ₱12.00 / km
+        private const val TRAIN_RATE = 5.0 // Train: ₱5.00 / km
+    }
+
     private val locationObserver = object : LocationObserver {
         override fun onNewRawLocation(rawLocation: MapboxLocation) {
             Log.d("Navigation", "Raw location update received")
@@ -161,13 +181,17 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
 
             initializeViews()
             setupMapboxNavigation()
-            initializeViews()
             initializeMapboxComponents()
             setupLocationServices()
             setupSearch()
             setupRecyclerView()
             setupLocationUpdates()
             setTestWalletBalance(1000.0)
+
+            val backButton = findViewById<MaterialButton>(R.id.backButton)
+            backButton.setOnClickListener {
+                finish() // This will close the activity and return to the previous fragment
+            }
 
             trackRouteButton.setOnClickListener {
                 selectedLocationPoint?.let { destination ->
@@ -253,16 +277,9 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
         Log.d("RouteDebug", "Origin: ${origin.longitude()}, ${origin.latitude()}")
         Log.d("RouteDebug", "Destination: ${destination.longitude()}, ${destination.latitude()}")
 
-        // Check if coordinates are valid
-        if (!areValidCoordinates(origin) || !areValidCoordinates(destination)) {
-            Log.e("RouteDebug", "Invalid coordinates detected")
-            Toast.makeText(this, "Invalid coordinates", Toast.LENGTH_SHORT).show()
-            return
-        }
-
         val routeOptions = RouteOptions.builder()
             .applyDefaultNavigationOptions()
-            .coordinatesList(listOf(origin, destination)) // Use coordinatesList instead of coordinates
+            .coordinatesList(listOf(origin, destination))
             .build()
 
         mapboxNavigation?.requestRoutes(
@@ -288,15 +305,23 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
                     Log.d("Navigation", "Routes ready: ${routes.size} routes received")
 
                     runOnUiThread {
-                        // First set the routes for the route line
+                        // Get the distance in kilometers from the route
+                        val distanceInKm = routes.firstOrNull()?.directionsRoute?.distance()?.let {
+                            it / 1000.0  // Convert meters to kilometers
+                        } ?: 0.0
+
+                        // Calculate and display fares based on the actual route distance
+                        calculateFares(distanceInKm)
+
+                        // Draw the route line on the map
                         routeLineApi.setNavigationRoutes(routes) { value ->
                             mapView.getMapboxMap().getStyle()?.let { style ->
                                 routeLineView.renderRouteDrawData(style, value)
-                                Log.d("Navigation", "Initial route line rendered")
+                                Log.d("Navigation", "Route line rendered")
                             }
                         }
 
-                        // Then start navigation
+                        // Start navigation with the routes
                         startNavigation(routes)
                     }
                 }
@@ -307,10 +332,15 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
     // Helper function to validate coordinates
     private fun areValidCoordinates(point: Point): Boolean {
         return point.latitude() in -90.0..90.0 &&
-               point.longitude() in -180.0..180.0
+                point.longitude() in -180.0..180.0
     }
 
     private fun handleTrackRoute() {
+        if (selectedTransportType == null) {
+            Toast.makeText(this, "Please select a transport type", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         Log.d("TrackRoute", "Track route button clicked")
         val paymentSuccess = simulatePayment()
 
@@ -346,6 +376,11 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
         val editor = sharedPreferences.edit()
         editor.putFloat("wallet_balance", amount.toFloat())
         editor.apply()
+
+        // Broadcast the wallet update
+        val intent = Intent("WALLET_BALANCE_UPDATED")
+        intent.putExtra("balance", amount)
+        sendBroadcast(intent)
     }
 
     private fun simulatePayment(): Boolean {
@@ -416,12 +451,12 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
 
     private fun loadStyle() {
         mapboxMap.loadStyleUri(Style.MAPBOX_STREETS) {
-                Log.e("LocationDebug", "Map style loaded")
-                // Set initial camera position with high zoom
-                updateCamera(mapView.mapboxMap.cameraState.center, 19.0, false)
-                enableLocationComponent()
-                initializeNavigation()
-                centerOnUserLocation()
+            Log.e("LocationDebug", "Map style loaded")
+            // Set initial camera position with high zoom
+            updateCamera(mapView.mapboxMap.cameraState.center, 19.0, false)
+            enableLocationComponent()
+            initializeNavigation()
+            centerOnUserLocation()
         }
     }
 
@@ -433,7 +468,80 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
         detailsPlaceNameTextView = findViewById(R.id.detailsPlaceNameTextView)
         detailsAddressTextView = findViewById(R.id.detailsAddressTextView)
         scrim = findViewById(R.id.scrim)
+
+        busFareTextView = findViewById(R.id.busFareTextView)
+        jeepFareTextView = findViewById(R.id.jeepFareTextView)
+        uvFareTextView = findViewById(R.id.uvFareTextView)
+        trainFareTextView = findViewById(R.id.trainFareTextView)
+
+        findViewById<LinearLayout>(R.id.busFareLayout).setOnClickListener {
+            val fareText = busFareTextView.text.toString()
+            trackRouteButton.text = "Confirm Route - $fareText"
+            updateSelectedTransport("bus")
+        }
+
+        findViewById<LinearLayout>(R.id.jeepneyFareLayout).setOnClickListener {
+            val fareText = jeepFareTextView.text.toString()
+            trackRouteButton.text = "Confirm Route - $fareText"
+            updateSelectedTransport("jeepney")
+        }
+
+        findViewById<LinearLayout>(R.id.uvFareLayout).setOnClickListener {
+            val fareText = uvFareTextView.text.toString()
+            trackRouteButton.text = "Confirm Route - $fareText"
+            updateSelectedTransport("uv")
+        }
+
+        findViewById<LinearLayout>(R.id.trainFareLayout).setOnClickListener {
+            val fareText = trainFareTextView.text.toString()
+            trackRouteButton.text = "Confirm Route - $fareText"
+            updateSelectedTransport("train")
+        }
         Log.e("LocationDebug", "Views initialized")
+    }
+
+    private fun updateSelectedTransport(type: String) {
+        selectedTransportType = type
+
+        // Reset all backgrounds
+        findViewById<LinearLayout>(R.id.busFareLayout).setBackgroundResource(android.R.color.transparent)
+        findViewById<LinearLayout>(R.id.jeepneyFareLayout).setBackgroundResource(android.R.color.transparent)
+        findViewById<LinearLayout>(R.id.uvFareLayout).setBackgroundResource(android.R.color.transparent)
+        findViewById<LinearLayout>(R.id.trainFareLayout).setBackgroundResource(android.R.color.transparent)
+
+        // Highlight selected option
+        val selectedLayout = when(type) {
+            "bus" -> findViewById<LinearLayout>(R.id.busFareLayout)
+            "jeepney" -> findViewById<LinearLayout>(R.id.jeepneyFareLayout)
+            "uv" -> findViewById<LinearLayout>(R.id.uvFareLayout)
+            "train" -> findViewById<LinearLayout>(R.id.trainFareLayout)
+            else -> null
+        }
+
+        selectedLayout?.setBackgroundResource(R.drawable.selected_transport_background)
+    }
+
+    private fun calculateFares(distanceInKm: Double) {
+        // Calculate fares directly using per-kilometer rates
+        val busFare = BUS_RATE * distanceInKm
+        val jeepFare = JEEP_RATE * distanceInKm
+        val uvFare = UV_RATE * distanceInKm
+        val trainFare = TRAIN_RATE * distanceInKm
+
+        // Update the TextViews with calculated fares
+        busFareTextView.text = "Bus: ₱%.2f".format(busFare)
+        jeepFareTextView.text = "Jeepney: ₱%.2f".format(jeepFare)
+        uvFareTextView.text = "UV Express: ₱%.2f".format(uvFare)
+        trainFareTextView.text = "Train: ₱%.2f".format(trainFare)
+
+        // Log the calculations for debugging
+        Log.d("FareCalculation", """
+        Distance: $distanceInKm km
+        Bus Fare: ₱$busFare
+        Jeep Fare: ₱$jeepFare
+        UV Fare: ₱$uvFare
+        Train Fare: ₱$trainFare
+    """.trimIndent())
     }
 
     private fun setupLocationServices() {
@@ -880,14 +988,46 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
 
     override fun onDestroy() {
         super.onDestroy()
-        mapView.location.removeOnIndicatorPositionChangedListener(onIndicatorPositionChangedListener)
-        routeLineApi.cancel()
-        routeLineView.cancel()
 
-        locationService.unregisterObserver(this)
-        mapboxNavigation?.stopTripSession()
-        MapboxNavigationApp.detach(this)
-        mapboxNavigation?.unregisterRoutesObserver(routesObserver)
+        try {
+            // Remove location listeners first
+            mapView.location.removeOnIndicatorPositionChangedListener(onIndicatorPositionChangedListener)
+
+            // Clean up route line resources
+            routeLineApi.cancel()
+            routeLineView.cancel()
+
+            // Clean up location service
+            locationService.unregisterObserver(this)
+
+            // Clean up navigation resources safely
+            mapboxNavigation?.let { navigation ->
+                // Unregister observers first
+                navigation.unregisterRoutesObserver(routesObserver)
+                navigation.unregisterLocationObserver(locationObserver)
+                navigation.unregisterRouteProgressObserver(routeProgressObserver)
+
+                // Stop trip session only if it's active
+                try {
+                    if (navigation.getTripSessionState() == TripSessionState.STARTED) {
+                        navigation.stopTripSession()
+                    } else {
+                        Log.d("Navigation", "Trip session was not active")
+                    }
+                } catch (e: Exception) {
+                    Log.e("Navigation", "Error stopping trip session", e)
+                }
+            }
+
+            // Detach from MapboxNavigationApp last
+            MapboxNavigationApp.detach(this)
+
+            // Clear the navigation instance
+            mapboxNavigation = null
+
+        } catch (e: Exception) {
+            Log.e("Navigation", "Error in onDestroy", e)
+        }
     }
 
     @SuppressLint("MissingPermission")
@@ -911,9 +1051,9 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
         mapboxNavigation.unregisterRoutesObserver(routesObserver)
     }
 
-    private fun getWalletBalance(): Float {
+    private fun getWalletBalance(): Double {
         val sharedPreferences = getSharedPreferences("MySharedPref", MODE_PRIVATE)
-        return sharedPreferences.getFloat("wallet_balance", 0f)
+        return sharedPreferences.getFloat("wallet_balance", 1000f).toDouble() // Default 1000 matches XML
     }
 
     // Add this new helper function

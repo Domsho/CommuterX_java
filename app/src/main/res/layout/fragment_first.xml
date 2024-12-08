@@ -21,6 +21,19 @@
         android:layout_marginTop="16dp"
         android:layout_marginStart="16dp"/>
 
+    <TextView
+        android:id="@+id/wallet_balance"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="₱1000"
+        android:textColor="@android:color/white"
+        android:textSize="16sp"
+        android:fontFamily="@font/nexa_font_family"
+        android:layout_marginEnd="8dp"
+        app:layout_constraintTop_toTopOf="@id/wallet_icon"
+        app:layout_constraintBottom_toBottomOf="@id/wallet_icon"
+        app:layout_constraintEnd_toStartOf="@id/wallet_icon"/>
+
     <ImageView
         android:id="@+id/wallet_icon"
         android:layout_width="24dp"
@@ -45,7 +58,8 @@
             android:id="@+id/mapView"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            app:mapbox_cameraZoom="12"/>
+            app:mapbox_cameraZoom="12"
+            app:mapbox_scaleBarEnabled="false" />
 
         <androidx.appcompat.widget.SearchView
             android:id="@+id/search_view"
@@ -71,22 +85,29 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        app:layout_constraintBottom_toTopOf="@id/bottom_navigation"
-        android:padding="16dp">
+        android:paddingBottom="20dp"
+        android:paddingLeft="20dp"
+        android:paddingRight="20dp"
+        app:layout_constraintBottom_toTopOf="@id/bottom_navigation">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginBottom="8dp">
+            android:layout_marginBottom="12dp">
 
             <TextView
                 android:id="@+id/busPrice"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Bus: $0.00"
+                android:text="Bus: ₱10.00 / km"
                 android:textColor="@color/white"
+                android:fontFamily="@font/nexa_font_family"
+                android:textSize="16sp"
+                android:padding="8dp"
+                android:background="@drawable/price_item_background"
+                android:elevation="4dp"
                 android:layout_marginEnd="8dp"/>
 
             <TextView
@@ -94,8 +115,13 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Jeep: $0.00"
-                android:textColor="@color/white"/>
+                android:text="Jeep: ₱6.00 / km"
+                android:textColor="@color/white"
+                android:fontFamily="@font/nexa_font_family"
+                android:textSize="16sp"
+                android:padding="8dp"
+                android:background="@drawable/price_item_background"
+                android:elevation="4dp"/>
         </LinearLayout>
 
         <LinearLayout
@@ -108,8 +134,13 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="UV: $0.00"
+                android:text="UV: ₱12.00 / km"
                 android:textColor="@color/white"
+                android:fontFamily="@font/nexa_font_family"
+                android:textSize="16sp"
+                android:padding="8dp"
+                android:background="@drawable/price_item_background"
+                android:elevation="4dp"
                 android:layout_marginEnd="8dp"/>
 
             <TextView
@@ -117,8 +148,13 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Train: $0.00"
-                android:textColor="@color/white"/>
+                android:text="Train: ₱5.00 / station"
+                android:textColor="@color/white"
+                android:fontFamily="@font/nexa_font_family"
+                android:textSize="16sp"
+                android:padding="8dp"
+                android:background="@drawable/price_item_background"
+                android:elevation="4dp"/>
         </LinearLayout>
 
     </LinearLayout>
@@ -126,13 +162,22 @@
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottom_navigation"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="55dp"
         android:background="#1E1E1E"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:menu="@menu/bottom_navigation_menu"
         app:itemIconTint="@color/bottom_nav_icon_color"
-        app:itemTextColor="@color/bottom_nav_text_color"/>
+        app:itemTextColor="@color/bottom_nav_text_color"
+        app:itemBackground="@drawable/bottom_nav_item_background"
+        app:itemRippleColor="@android:color/transparent"
+        app:itemActiveIndicatorStyle="@null"
+        app:itemIconSize="20dp"
+        app:labelVisibilityMode="labeled"
+        app:itemTextAppearanceActive="@style/BottomNavigationViewTextStyle"
+        app:itemTextAppearanceInactive="@style/BottomNavigationViewTextStyle"
+        app:itemPaddingBottom="7dp"
+        app:itemPaddingTop="10dp" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
