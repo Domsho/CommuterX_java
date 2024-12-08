@@ -5,6 +5,7 @@ import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ObjectAnimator
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Bundle
@@ -16,6 +17,7 @@ import android.view.animation.AccelerateInterpolator
 import android.view.animation.DecelerateInterpolator
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -64,6 +66,7 @@ import com.mapbox.navigation.core.lifecycle.MapboxNavigationObserver
 import com.mapbox.navigation.core.trip.session.LocationMatcherResult
 import com.mapbox.navigation.core.trip.session.LocationObserver
 import com.mapbox.navigation.core.trip.session.RouteProgressObserver
+import com.mapbox.navigation.core.trip.session.TripSessionState
 import com.mapbox.navigation.ui.maps.camera.NavigationCamera
 import com.mapbox.navigation.ui.maps.camera.data.MapboxNavigationViewportDataSource
 import com.mapbox.navigation.ui.maps.location.NavigationLocationProvider
@@ -71,6 +74,7 @@ import com.mapbox.navigation.ui.maps.route.line.api.MapboxRouteLineApi
 import com.mapbox.navigation.ui.maps.route.line.api.MapboxRouteLineView
 import com.mapbox.navigation.ui.maps.route.line.model.MapboxRouteLineApiOptions
 import com.mapbox.navigation.ui.maps.route.line.model.MapboxRouteLineViewOptions
+import com.mapbox.navigation.ui.maps.route.line.model.RouteLineColorResources
 import com.mapbox.search.ResponseInfo
 import com.mapbox.search.SearchEngine
 import com.mapbox.search.SearchEngineSettings
@@ -80,13 +84,6 @@ import com.mapbox.search.SearchSuggestionsCallback
 import com.mapbox.search.result.SearchResult
 import com.mapbox.search.result.SearchSuggestion
 import com.mapbox.common.location.Location as MapboxLocation
-import com.mapbox.navigation.ui.maps.route.line.model.RouteLineColorResources
-import com.mapbox.navigation.core.trip.session.TripSessionState
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
-import android.widget.LinearLayout
 
 
 class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, MapboxNavigationObserver {
@@ -159,6 +156,37 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
         }
     }
 
+    private val searchCallback = object : SearchSelectionCallback {
+        override fun onResult(
+            suggestion: SearchSuggestion,
+            searchResult: SearchResult,
+            responseInfo: ResponseInfo
+        ) {
+            runOnUiThread {
+                onSearchResultSelected(searchResult)
+            }
+        }
+
+        override fun onError(e: Exception) {
+            Log.e("SearchDebug", "Search selection error: ${e.message}")
+        }
+
+        override fun onResults(
+            suggestion: SearchSuggestion,
+            results: List<SearchResult>,
+            responseInfo: ResponseInfo
+        ) {
+            TODO("Not yet implemented")
+        }
+
+        override fun onSuggestions(
+            suggestions: List<SearchSuggestion>,
+            responseInfo: ResponseInfo
+        ) {
+            TODO("Not yet implemented")
+        }
+    }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -191,12 +219,6 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
             val backButton = findViewById<MaterialButton>(R.id.backButton)
             backButton.setOnClickListener {
                 finish() // This will close the activity and return to the previous fragment
-            }
-
-            trackRouteButton.setOnClickListener {
-                selectedLocationPoint?.let { destination ->
-                    fetchRoute(destination)  // This will trigger the routesObserver
-                }
             }
 
             initializeRouteLine()
@@ -253,8 +275,21 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
             navigation.registerLocationObserver(locationObserver)
             navigation.registerRouteProgressObserver(routeProgressObserver)
 
-            // Hide search UI
-            hideSearchUI()
+            // Hide search UI but ensure details card stays visible
+            if (detailsCard.visibility == View.VISIBLE) {
+                // Only hide search-related UI
+                searchResultsRecyclerView.visibility = View.GONE
+                searchView.setQuery("", false)
+                searchView.clearFocus()
+
+                // Hide keyboard
+                val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+                currentFocus?.let {
+                    imm.hideSoftInputFromWindow(it.windowToken, 0)
+                }
+            } else {
+                hideSearchUI()
+            }
         } ?: Log.e("Navigation", "MapboxNavigation is null")
     }
 
@@ -313,16 +348,8 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
                         // Calculate and display fares based on the actual route distance
                         calculateFares(distanceInKm)
 
-                        // Draw the route line on the map
-                        routeLineApi.setNavigationRoutes(routes) { value ->
-                            mapView.getMapboxMap().getStyle()?.let { style ->
-                                routeLineView.renderRouteDrawData(style, value)
-                                Log.d("Navigation", "Route line rendered")
-                            }
-                        }
-
-                        // Start navigation with the routes
-                        startNavigation(routes)
+                        // Only set the routes - don't start navigation here
+                        mapboxNavigation?.setNavigationRoutes(routes)
                     }
                 }
             }
@@ -497,6 +524,12 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
             trackRouteButton.text = "Confirm Route - $fareText"
             updateSelectedTransport("train")
         }
+
+        trackRouteButton = findViewById(R.id.trackRouteButton)
+        trackRouteButton.isEnabled = false
+        trackRouteButton.setOnClickListener {
+            handleTrackRoute()  // Connect the button to handleTrackRoute
+        }
         Log.e("LocationDebug", "Views initialized")
     }
 
@@ -511,30 +544,45 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
 
         // Highlight selected option
         val selectedLayout = when(type) {
-            "bus" -> findViewById<LinearLayout>(R.id.busFareLayout)
-            "jeepney" -> findViewById<LinearLayout>(R.id.jeepneyFareLayout)
-            "uv" -> findViewById<LinearLayout>(R.id.uvFareLayout)
+            "bus" -> findViewById(R.id.busFareLayout)
+            "jeepney" -> findViewById(R.id.jeepneyFareLayout)
+            "uv" -> findViewById(R.id.uvFareLayout)
             "train" -> findViewById<LinearLayout>(R.id.trainFareLayout)
             else -> null
         }
 
         selectedLayout?.setBackgroundResource(R.drawable.selected_transport_background)
+
+        val fareText = when(type) {
+            "bus" -> busFareTextView.text
+            "jeepney" -> jeepFareTextView.text
+            "uv" -> uvFareTextView.text
+            "train" -> trainFareTextView.text
+            else -> ""
+        }
+        trackRouteButton.text = "Confirm Route - $fareText"
+        trackRouteButton.isEnabled = true
     }
 
     private fun calculateFares(distanceInKm: Double) {
-        // Calculate fares directly using per-kilometer rates
+        // Calculate fares using per-kilometer rates
         val busFare = BUS_RATE * distanceInKm
         val jeepFare = JEEP_RATE * distanceInKm
         val uvFare = UV_RATE * distanceInKm
         val trainFare = TRAIN_RATE * distanceInKm
 
         // Update the TextViews with calculated fares
-        busFareTextView.text = "Bus: ₱%.2f".format(busFare)
-        jeepFareTextView.text = "Jeepney: ₱%.2f".format(jeepFare)
-        uvFareTextView.text = "UV Express: ₱%.2f".format(uvFare)
-        trainFareTextView.text = "Train: ₱%.2f".format(trainFare)
+        busFareTextView.text = String.format("Bus: ₱%.2f", busFare)
+        jeepFareTextView.text = String.format("Jeepney: ₱%.2f", jeepFare)
+        uvFareTextView.text = String.format("UV Express: ₱%.2f", uvFare)
+        trainFareTextView.text = String.format("Train: ₱%.2f", trainFare)
 
-        // Log the calculations for debugging
+        // Make fare options visible
+        findViewById<LinearLayout>(R.id.busFareLayout).visibility = View.VISIBLE
+        findViewById<LinearLayout>(R.id.jeepneyFareLayout).visibility = View.VISIBLE
+        findViewById<LinearLayout>(R.id.uvFareLayout).visibility = View.VISIBLE
+        findViewById<LinearLayout>(R.id.trainFareLayout).visibility = View.VISIBLE
+
         Log.d("FareCalculation", """
         Distance: $distanceInKm km
         Bus Fare: ₱$busFare
@@ -571,6 +619,28 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
             Log.e("LocationDebug", "Trip session started")
         } catch (e: Exception) {
             Log.e("LocationDebug", "Error in initializeNavigation", e)
+        }
+    }
+
+    private fun onSearchResultSelected(searchResult: SearchResult) {
+        searchResult.coordinate?.let { coordinate ->
+            selectedLocationPoint = Point.fromLngLat(coordinate.longitude(), coordinate.latitude())
+
+            // Update UI elements
+            detailsPlaceNameTextView.text = searchResult.name
+            detailsAddressTextView.text = searchResult.address?.formattedAddress() ?: "Address not available"
+
+            // Ensure the card and scrim are visible
+            detailsCard.visibility = View.VISIBLE
+            scrim.visibility = View.VISIBLE
+
+            // Show the details card with animation
+            showDetailsCard()
+
+            // Fetch route after ensuring card visibility
+            selectedLocationPoint?.let { destination ->
+                fetchRoute(destination)
+            }
         }
     }
 
@@ -813,7 +883,6 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
                     return true
                 }
             })
-            Log.e("SearchDebug", "Search setup completed")
         } catch (e: Exception) {
             Log.e("SearchDebug", "Error setting up search: ${e.message}", e)
         }
@@ -838,15 +907,31 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
     }
 
     private fun showDetailsCard() {
-        scrim.visibility = View.VISIBLE
-        scrim.alpha = 0f
-        scrim.animate().alpha(1f).setDuration(300).start()
-
+        // Ensure views are visible before starting animation
         detailsCard.visibility = View.VISIBLE
-        val slideUp = ObjectAnimator.ofFloat(detailsCard, "translationY", detailsCard.height.toFloat(), 0f)
-        slideUp.duration = 300
-        slideUp.interpolator = DecelerateInterpolator()
-        slideUp.start()
+        scrim.visibility = View.VISIBLE
+
+        // Reset any ongoing animations
+        detailsCard.animate().cancel()
+        scrim.animate().cancel()
+
+        // Set initial states
+        detailsCard.alpha = 0f  // Add this line
+        detailsCard.translationY = detailsCard.height.toFloat()
+        scrim.alpha = 0f
+
+        // Animate in
+        scrim.animate()
+            .alpha(1f)
+            .setDuration(300)
+            .start()
+
+        detailsCard.animate()
+            .alpha(1f)  // Add this line
+            .translationY(0f)
+            .setDuration(300)
+            .setInterpolator(DecelerateInterpolator())
+            .start()
     }
 
     private fun hideDetailsCard() {
@@ -873,40 +958,20 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
                 imm.hideSoftInputFromWindow(it.windowToken, 0)
             }
 
-            searchEngine.select(searchSuggestion, object : SearchSelectionCallback {
-                override fun onResult(suggestion: SearchSuggestion, result: SearchResult, responseInfo: ResponseInfo) {
-                    result.coordinate.let { coordinate ->
-                        Log.e("SearchDebug", "Search result coordinates: ${coordinate.latitude()}, ${coordinate.longitude()}")
-                        selectedLocationPoint = Point.fromLngLat(coordinate.longitude(), coordinate.latitude())
-                        mapView.mapboxMap.setCamera(
-                            CameraOptions.Builder()
-                                .center(selectedLocationPoint)
-                                .zoom(14.0)
-                                .build()
-                        )
-                        Log.e("SearchDebug", "Camera moved to: ${selectedLocationPoint?.latitude()}, ${selectedLocationPoint?.longitude()}")
-                    }
-                    searchResultsRecyclerView.visibility = View.GONE
-                    searchView.background = ContextCompat.getDrawable(this@FullScreenMapActivity, R.drawable.search_background)
+            // Hide search results recycler view
+            searchResultsRecyclerView.visibility = View.GONE
 
-                    detailsPlaceNameTextView.text = result.name
-                    detailsAddressTextView.text = result.address?.formattedAddress() ?: "Address not available"
+            // Reset search view background
+            searchView.background = ContextCompat.getDrawable(
+                this@FullScreenMapActivity,
+                R.drawable.search_background_rounded_green
+            )
 
-                    showDetailsCard()
-                }
+            // Show the details card before processing the search
+            showDetailsCard()
 
-                override fun onResults(suggestion: SearchSuggestion, results: List<SearchResult>, responseInfo: ResponseInfo) {
-                    // Not implemented
-                }
-
-                override fun onSuggestions(suggestions: List<SearchSuggestion>, responseInfo: ResponseInfo) {
-                    // Not implemented
-                }
-
-                override fun onError(e: Exception) {
-                    // Handle error
-                }
-            })
+            // Process the search selection
+            searchEngine.select(searchSuggestion, searchCallback)
         }
         searchResultsRecyclerView.layoutManager = LinearLayoutManager(this)
         searchResultsRecyclerView.adapter = searchResultsAdapter
@@ -922,14 +987,17 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
                 runOnUiThread {
                     searchResultsAdapter.updateResults(suggestions)
                     searchResultsRecyclerView.visibility = View.VISIBLE
-                    searchView.background = ContextCompat.getDrawable(this@FullScreenMapActivity, R.drawable.search_background_top)
-                    detailsCard.visibility = View.GONE
+                    searchView.background = ContextCompat.getDrawable(
+                        this@FullScreenMapActivity,
+                        R.drawable.search_background_top
+                    )
                 }
             }
 
             override fun onError(e: Exception) {
                 runOnUiThread {
                     // Handle error
+                    Log.e("SearchDebug", "Search error: ${e.message}")
                 }
             }
         })
@@ -949,13 +1017,6 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
     override fun onAccuracyAuthorizationChanged(authorization: AccuracyAuthorization) {
         Log.e("LocationService", "Accuracy authorization changed: $authorization")
     }
-
-    private fun updateCameraToLocation(location: MapboxLocation) {
-        Log.e("LocationDebug", "Updating camera to location: ${location.latitude}, ${location.longitude}")
-        val point = Point.fromLngLat(location.longitude, location.latitude)
-        updateCamera(point)
-    }
-
 
 
     private val routeProgressObserver = RouteProgressObserver { routeProgress ->
