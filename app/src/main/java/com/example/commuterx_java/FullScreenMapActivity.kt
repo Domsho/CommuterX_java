@@ -24,6 +24,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SearchView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.location.FusedLocationProviderClient
@@ -51,6 +52,7 @@ import com.mapbox.maps.plugin.animation.MapAnimationOptions.Companion.mapAnimati
 import com.mapbox.maps.plugin.animation.camera
 import com.mapbox.maps.plugin.gestures.OnMoveListener
 import com.mapbox.maps.plugin.gestures.gestures
+import com.mapbox.maps.plugin.locationcomponent.LocationComponentPlugin
 import com.mapbox.maps.plugin.locationcomponent.OnIndicatorBearingChangedListener
 import com.mapbox.maps.plugin.locationcomponent.OnIndicatorPositionChangedListener
 import com.mapbox.maps.plugin.locationcomponent.location
@@ -83,7 +85,12 @@ import com.mapbox.search.SearchSelectionCallback
 import com.mapbox.search.SearchSuggestionsCallback
 import com.mapbox.search.result.SearchResult
 import com.mapbox.search.result.SearchSuggestion
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import com.mapbox.common.location.Location as MapboxLocation
+import com.mapbox.navigation.ui.maps.route.RouteLayerConstants
+
 
 
 class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, MapboxNavigationObserver {
@@ -116,6 +123,7 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
     private lateinit var uvFareTextView: TextView
     private lateinit var trainFareTextView: TextView
     private var selectedTransportType: String? = null
+    private var currentRoutes: List<NavigationRoute> = emptyList()
 
 
     companion object {
@@ -216,12 +224,18 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
             setupLocationUpdates()
             setTestWalletBalance(1000.0)
 
+
+
             val backButton = findViewById<MaterialButton>(R.id.backButton)
             backButton.setOnClickListener {
                 finish() // This will close the activity and return to the previous fragment
             }
 
             initializeRouteLine()
+
+            Handler(Looper.getMainLooper()).postDelayed({
+                checkLocationComponentStatus()
+            }, 2000)
 
             mapView.mapboxMap.loadStyleUri(Style.MAPBOX_STREETS) {
                 setupObservers()
@@ -338,6 +352,7 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
                 @SuppressLint("MissingPermission")
                 override fun onRoutesReady(routes: List<NavigationRoute>, routerOrigin: String) {
                     Log.d("Navigation", "Routes ready: ${routes.size} routes received")
+                    currentRoutes = routes // Store the routes
 
                     runOnUiThread {
                         // Get the distance in kilometers from the route
@@ -348,19 +363,19 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
                         // Calculate and display fares based on the actual route distance
                         calculateFares(distanceInKm)
 
-                        // Only set the routes - don't start navigation here
+                        // Set the routes and update route line
                         mapboxNavigation?.setNavigationRoutes(routes)
+                        routeLineApi.setNavigationRoutes(routes) { value ->
+                            mapView.getMapboxMap().getStyle()?.let { style ->
+                                routeLineView.renderRouteDrawData(style, value)
+                            }
+                        }
                     }
                 }
             }
         )
     }
 
-    // Helper function to validate coordinates
-    private fun areValidCoordinates(point: Point): Boolean {
-        return point.latitude() in -90.0..90.0 &&
-                point.longitude() in -180.0..180.0
-    }
 
     private fun handleTrackRoute() {
         if (selectedTransportType == null) {
@@ -379,6 +394,31 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
             if (currentBalance >= 10.0) {
                 updateWallet(currentBalance - 10.0)
                 Log.d("TrackRoute", "Wallet updated. New balance: ${currentBalance - 10.0}")
+
+                // Add these lines to ensure route is displayed
+                selectedLocationPoint?.let { destination ->
+                    mapboxNavigation?.setNavigationRoutes(currentRoutes)
+
+                    // Update route line visibility
+                    routeLineApi.setNavigationRoutes(currentRoutes) { value ->
+                        mapView.getMapboxMap().getStyle()?.let { style ->
+                            routeLineView.renderRouteDrawData(style, value)
+                        }
+                    }
+                }
+
+                // Hide the details card and scrim with animation
+                hideDetailsCard()
+
+                // Hide the scrim with animation
+                scrim.animate()
+                    .alpha(0f)
+                    .setDuration(300)
+                    .withEndAction {
+                        scrim.visibility = View.GONE
+                    }
+                    .start()
+
                 startTrackingRoute()
             } else {
                 Log.d("TrackRoute", "Insufficient funds in wallet.")
@@ -682,18 +722,84 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
     private fun enableLocationComponent() {
         Log.d("Navigation", "Enabling location component")
 
-        mapView.location.apply {
-            setLocationProvider(navigationLocationProvider)
-            // Remove duplicate listener registration
-            removeOnIndicatorPositionChangedListener(onIndicatorPositionChangedListener)
-            addOnIndicatorPositionChangedListener(onIndicatorPositionChangedListener)
-            enabled = true
-            puckBearingEnabled = true
+        lifecycleScope.launch(Dispatchers.Main) {
+            try {
+                // Wait for the style to be loaded first
+                mapView.getMapboxMap().loadStyleUri(Style.MAPBOX_STREETS) { style ->
+                    // Initialize location component
+                    mapView.location.apply {
+                        // Enable the location component first
+                        enabled = true
 
-            locationPuck = LocationPuck2D(
-                bearingImage = ImageHolder.from(R.drawable.mapbox_puck)
-            )
+                        // Set the location provider
+                        setLocationProvider(navigationLocationProvider)
+
+                        // Configure the puck appearance
+                        locationPuck = LocationPuck2D(
+                            bearingImage = ImageHolder.from(R.drawable.mapbox_puck), // Try a different icon
+                            shadowImage = null,
+                            scaleExpression = null,
+                            opacity = 1.0f
+                        )
+
+                        // Enable puck features
+                        puckBearingEnabled = true
+                        pulsingEnabled = true
+
+                        updateSettings {
+                            this.enabled = true
+                            this.pulsingEnabled = true
+                            this.locationPuck = LocationPuck2D(
+                                bearingImage = ImageHolder.from(R.drawable.mapbox_puck)
+                            )
+                        }
+
+                        // Add position listener
+                        removeOnIndicatorPositionChangedListener(onIndicatorPositionChangedListener)
+                        addOnIndicatorPositionChangedListener(onIndicatorPositionChangedListener)
+                    }
+
+                    // Update location settings
+                    mapView.location.updateSettings {
+                        enabled = true
+                        pulsingEnabled = true
+                    }
+
+                    // Request location updates
+                    if (ActivityCompat.checkSelfPermission(
+                            this@FullScreenMapActivity,
+                            Manifest.permission.ACCESS_FINE_LOCATION
+                        ) == PackageManager.PERMISSION_GRANTED) {
+                        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                            location?.let {
+                                val point = Point.fromLngLat(it.longitude, it.latitude)
+                                updateCamera(point)
+
+                                // Update the navigation location provider
+                                navigationLocationProvider.changePosition(
+                                    location = MapboxLocation.Builder()
+                                        .latitude(it.latitude)
+                                        .longitude(it.longitude)
+                                        .build()
+                                )
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("Navigation", "Error enabling location component", e)
+            }
         }
+    }
+
+    private fun checkLocationComponentStatus() {
+        Log.d("LocationComponent", """
+        Location enabled: ${mapView.location.enabled}
+        Puck bearing enabled: ${mapView.location.puckBearingEnabled}
+        Pulsing enabled: ${mapView.location.pulsingEnabled}
+        Last location: ${navigationLocationProvider.lastLocation}
+        Location provider: ${mapView.location.getLocationProvider()}
+    """.trimIndent())
     }
 
     @SuppressLint("MissingPermission")
@@ -1095,38 +1201,59 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
     override fun onAttached(mapboxNavigation: MapboxNavigation) {
         Log.e("LocationDebug", "onAttached called")
 
-        // Unregister any previously registered observers to avoid duplicates
-        mapboxNavigation.unregisterLocationObserver(locationObserver)
-        mapboxNavigation.unregisterRouteProgressObserver(routeProgressObserver)
-        mapboxNavigation.unregisterRoutesObserver(routesObserver)
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                // Unregister observers in background
+                mapboxNavigation.unregisterLocationObserver(locationObserver)
+                mapboxNavigation.unregisterRouteProgressObserver(routeProgressObserver)
+                mapboxNavigation.unregisterRoutesObserver(routesObserver)
 
-        // Register the observers
-        mapboxNavigation.registerLocationObserver(locationObserver)
-        mapboxNavigation.registerRouteProgressObserver(routeProgressObserver)
-        mapboxNavigation.registerRoutesObserver(routesObserver)
+                // Register new observers in background
+                mapboxNavigation.registerLocationObserver(locationObserver)
+                mapboxNavigation.registerRouteProgressObserver(routeProgressObserver)
+                mapboxNavigation.registerRoutesObserver(routesObserver)
+            } catch (e: Exception) {
+                Log.e("Navigation", "Error in onAttached", e)
+            }
+        }
     }
 
     override fun onDetached(mapboxNavigation: MapboxNavigation) {
-        mapboxNavigation.unregisterLocationObserver(locationObserver)
-        mapboxNavigation.unregisterRouteProgressObserver(routeProgressObserver)
-        mapboxNavigation.unregisterRoutesObserver(routesObserver)
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                mapboxNavigation.unregisterLocationObserver(locationObserver)
+                mapboxNavigation.unregisterRouteProgressObserver(routeProgressObserver)
+                mapboxNavigation.unregisterRoutesObserver(routesObserver)
+            } catch (e: Exception) {
+                Log.e("Navigation", "Error in onDetached", e)
+            }
+        }
     }
 
     private fun getWalletBalance(): Double {
-        val sharedPreferences = getSharedPreferences("MySharedPref", MODE_PRIVATE)
-        return sharedPreferences.getFloat("wallet_balance", 1000f).toDouble() // Default 1000 matches XML
+        // Since SharedPreferences operations are relatively quick, this can stay on main thread
+        // But if you want to be extra safe:
+        return runBlocking(Dispatchers.IO) {
+            val sharedPreferences = getSharedPreferences("MySharedPref", MODE_PRIVATE)
+            sharedPreferences.getFloat("wallet_balance", 1000f).toDouble()
+        }
     }
 
-    // Add this new helper function
     private fun hideSearchUI() {
-        searchResultsRecyclerView.visibility = View.GONE
-        searchView.setQuery("", false)
-        searchView.clearFocus()
+        lifecycleScope.launch(Dispatchers.Main) {
+            try {
+                searchResultsRecyclerView.visibility = View.GONE
+                searchView.setQuery("", false)
+                searchView.clearFocus()
 
-        // Hide keyboard
-        val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
-        currentFocus?.let {
-            imm.hideSoftInputFromWindow(it.windowToken, 0)
+                // Hide keyboard
+                val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+                currentFocus?.let {
+                    imm.hideSoftInputFromWindow(it.windowToken, 0)
+                }
+            } catch (e: Exception) {
+                Log.e("UI", "Error hiding search UI", e)
+            }
         }
     }
 }
