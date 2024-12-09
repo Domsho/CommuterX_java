@@ -52,7 +52,6 @@ import com.mapbox.maps.plugin.animation.MapAnimationOptions.Companion.mapAnimati
 import com.mapbox.maps.plugin.animation.camera
 import com.mapbox.maps.plugin.gestures.OnMoveListener
 import com.mapbox.maps.plugin.gestures.gestures
-import com.mapbox.maps.plugin.locationcomponent.LocationComponentPlugin
 import com.mapbox.maps.plugin.locationcomponent.OnIndicatorBearingChangedListener
 import com.mapbox.maps.plugin.locationcomponent.OnIndicatorPositionChangedListener
 import com.mapbox.maps.plugin.locationcomponent.location
@@ -89,7 +88,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import com.mapbox.common.location.Location as MapboxLocation
-import com.mapbox.navigation.ui.maps.route.RouteLayerConstants
 
 
 
@@ -383,50 +381,63 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
             return
         }
 
-        Log.d("TrackRoute", "Track route button clicked")
-        val paymentSuccess = simulatePayment()
+        // Extract the fare amount from the button text
+        val fareText = trackRouteButton.text.toString()
+        val fareAmount = extractFareAmount(fareText)
 
-        if (paymentSuccess) {
-            Log.d("TrackRoute", "Payment simulation successful")
-            val currentBalance = getWalletBalance()
-            Log.d("TrackRoute", "Current wallet balance: $currentBalance")
+        if (fareAmount == null) {
+            Toast.makeText(this, "Invalid fare amount", Toast.LENGTH_SHORT).show()
+            return
+        }
 
-            if (currentBalance >= 10.0) {
-                updateWallet(currentBalance - 10.0)
-                Log.d("TrackRoute", "Wallet updated. New balance: ${currentBalance - 10.0}")
+        Log.d("TrackRoute", "Track route button clicked with fare: $fareAmount")
+        val currentBalance = getWalletBalance()
 
-                // Add these lines to ensure route is displayed
-                selectedLocationPoint?.let { destination ->
-                    mapboxNavigation?.setNavigationRoutes(currentRoutes)
+        if (currentBalance >= fareAmount) {
+            val newBalance = currentBalance - fareAmount
+            updateWallet(newBalance)
+            Log.d("TrackRoute", "Wallet updated. New balance: $newBalance")
 
-                    // Update route line visibility
-                    routeLineApi.setNavigationRoutes(currentRoutes) { value ->
-                        mapView.getMapboxMap().getStyle()?.let { style ->
-                            routeLineView.renderRouteDrawData(style, value)
-                        }
+            // Add these lines to ensure route is displayed
+            selectedLocationPoint?.let { destination ->
+                mapboxNavigation?.setNavigationRoutes(currentRoutes)
+
+                // Update route line visibility
+                routeLineApi.setNavigationRoutes(currentRoutes) { value ->
+                    mapView.getMapboxMap().getStyle()?.let { style ->
+                        routeLineView.renderRouteDrawData(style, value)
                     }
                 }
-
-                // Hide the details card and scrim with animation
-                hideDetailsCard()
-
-                // Hide the scrim with animation
-                scrim.animate()
-                    .alpha(0f)
-                    .setDuration(300)
-                    .withEndAction {
-                        scrim.visibility = View.GONE
-                    }
-                    .start()
-
-                startTrackingRoute()
-            } else {
-                Log.d("TrackRoute", "Insufficient funds in wallet.")
-                Toast.makeText(this, "Insufficient funds in wallet.", Toast.LENGTH_SHORT).show()
             }
+
+            // Hide the details card and scrim with animation
+            hideDetailsCard()
+
+            // Hide the scrim with animation
+            scrim.animate()
+                .alpha(0f)
+                .setDuration(300)
+                .withEndAction {
+                    scrim.visibility = View.GONE
+                }
+                .start()
+
+            startTrackingRoute()
         } else {
-            Log.d("TrackRoute", "Payment simulation failed")
-            Toast.makeText(this, "Payment failed. Please try again.", Toast.LENGTH_SHORT).show()
+            Log.d("TrackRoute", "Insufficient funds in wallet.")
+            Toast.makeText(this, "Insufficient funds in wallet.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun extractFareAmount(fareText: String): Double? {
+        // Expected format: "Confirm Route - ₱XX.XX"
+        return try {
+            val regex = "₱(\\d+\\.?\\d*)".toRegex()
+            val matchResult = regex.find(fareText)
+            matchResult?.groupValues?.get(1)?.toDouble()
+        } catch (e: Exception) {
+            Log.e("FareExtraction", "Error extracting fare: ${e.message}")
+            null
         }
     }
 
@@ -745,6 +756,7 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
                         // Enable puck features
                         puckBearingEnabled = true
                         pulsingEnabled = true
+
 
                         updateSettings {
                             this.enabled = true

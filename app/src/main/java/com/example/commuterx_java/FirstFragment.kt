@@ -47,7 +47,8 @@ import com.mapbox.search.SearchEngineSettings
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import android.content.BroadcastReceiver
 import android.content.IntentFilter
-
+import android.os.Build
+import androidx.annotation.RequiresApi
 
 
 class FirstFragment : Fragment() {
@@ -125,6 +126,7 @@ class FirstFragment : Fragment() {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -147,17 +149,25 @@ class FirstFragment : Fragment() {
         walletBalanceTextView = view.findViewById(R.id.wallet_balance)
         updateWalletDisplay()
 
+        // Replace the existing walletUpdateReceiver with this updated version
         walletUpdateReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 if (intent?.action == "WALLET_BALANCE_UPDATED") {
                     val balance = intent.getDoubleExtra("balance", 0.0)
-                    walletBalanceTextView.text = "₱%.2f".format(balance)
+                    activity?.runOnUiThread {
+                        walletBalanceTextView.text = "₱%.2f".format(balance)
+                        Log.d("WalletUpdate", "Received balance update: $balance")
+                    }
                 }
             }
         }
+
+        // Update the receiver registration
+        val filter = IntentFilter("WALLET_BALANCE_UPDATED")
         requireActivity().registerReceiver(
             walletUpdateReceiver,
-            IntentFilter("WALLET_BALANCE_UPDATED"), Context.RECEIVER_NOT_EXPORTED
+            filter,
+            Context.RECEIVER_NOT_EXPORTED
         )
 
         setupMapbox()
@@ -200,6 +210,7 @@ class FirstFragment : Fragment() {
         )
         val balance = sharedPreferences.getFloat("wallet_balance", 1000f)
         walletBalanceTextView.text = "₱%.2f".format(balance)
+        Log.d("WalletUpdate", "Wallet display updated: $balance")
     }
 
 
@@ -502,6 +513,7 @@ class FirstFragment : Fragment() {
         // Set home as selected when returning to the fragment
         bottomNavigation.selectedItemId = R.id.navigation_home
         checkLocationServices()
+        updateWalletDisplay()
     }
 
     override fun onDestroyView() {
