@@ -16,4 +16,5 @@
     <color name="nav_item_color">#FFFFFF</color>
     <color name="bottom_nav_icon_color">#FFFFFF</color>
     <color name="bottom_nav_text_color">#FFFFFF</color>
+    <color name="selected_transport_color">#E0E0E0</color>
 </resources>

@@ -56,4 +56,10 @@
         <item name="android:includeFontPadding">false</item>
     </style>
 
+    <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Your theme customizations -->
+        <item name="colorPrimary">@color/primary</item>
+        <item name="android:windowBackground">@color/black</item>
+    </style>
+
 </resources>

@@ -19,7 +19,148 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"/>
 
-    <!-- Add your settings content here -->
+    <View
+        android:id="@+id/top_divider"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#333333"
+        android:layout_marginTop="16dp"
+        app:layout_constraintTop_toBottomOf="@id/settings_title"/>
+
+    <LinearLayout
+        android:id="@+id/notifications_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?attr/selectableItemBackground"
+        app:layout_constraintTop_toBottomOf="@id/top_divider">
+
+        <TextView
+            android:id="@+id/notifications"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Notifications"
+            android:textColor="@android:color/white"
+            android:textSize="18sp"
+            android:padding="16dp"/>
+    </LinearLayout>
+
+    <View
+        android:id="@+id/notifications_divider"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#333333"
+        app:layout_constraintTop_toBottomOf="@id/notifications_container"/>
+
+    <LinearLayout
+        android:id="@+id/payment_methods_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?attr/selectableItemBackground"
+        app:layout_constraintTop_toBottomOf="@id/notifications_divider">
+
+        <TextView
+            android:id="@+id/payment_methods"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Payment Methods"
+            android:textColor="@android:color/white"
+            android:textSize="18sp"
+            android:padding="16dp"/>
+    </LinearLayout>
+
+    <View
+        android:id="@+id/payment_methods_divider"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#333333"
+        app:layout_constraintTop_toBottomOf="@id/payment_methods_container"/>
+
+    <LinearLayout
+        android:id="@+id/language_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?attr/selectableItemBackground"
+        app:layout_constraintTop_toBottomOf="@id/payment_methods_divider">
+
+        <TextView
+            android:id="@+id/language"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Language"
+            android:textColor="@android:color/white"
+            android:textSize="18sp"
+            android:padding="16dp"/>
+    </LinearLayout>
+
+    <View
+        android:id="@+id/language_divider"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#333333"
+        app:layout_constraintTop_toBottomOf="@id/language_container"/>
+
+    <LinearLayout
+        android:id="@+id/help_center_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?attr/selectableItemBackground"
+        app:layout_constraintTop_toBottomOf="@id/language_divider">
+
+        <TextView
+            android:id="@+id/help_center"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Help Center"
+            android:textColor="@android:color/white"
+            android:textSize="18sp"
+            android:padding="16dp"/>
+    </LinearLayout>
+
+    <View
+        android:id="@+id/help_center_divider"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#333333"
+        app:layout_constraintTop_toBottomOf="@id/help_center_container"/>
+
+    <LinearLayout
+        android:id="@+id/share_feedback_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?attr/selectableItemBackground"
+        app:layout_constraintTop_toBottomOf="@id/help_center_divider">
+
+        <TextView
+            android:id="@+id/share_feedback"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Share Feedback"
+            android:textColor="@android:color/white"
+            android:textSize="18sp"
+            android:padding="16dp"/>
+    </LinearLayout>
+
+    <View
+        android:id="@+id/share_feedback_divider"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#333333"
+        app:layout_constraintTop_toBottomOf="@id/share_feedback_container"/>
 
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottom_navigation"
