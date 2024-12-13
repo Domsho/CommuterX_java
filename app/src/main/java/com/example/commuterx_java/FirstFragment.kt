@@ -64,8 +64,7 @@ class FirstFragment : Fragment() {
     private lateinit var connectivityManager: ConnectivityManager
     private var isLocationTrackingEnabled = false
     private lateinit var bottomNavigation: BottomNavigationView
-    private lateinit var walletBalanceTextView: TextView
-    private var walletUpdateReceiver: BroadcastReceiver? = null
+
 
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
@@ -146,29 +145,6 @@ class FirstFragment : Fragment() {
         val settings = SearchEngineSettings(null)
         searchEngine = SearchEngine.createSearchEngineWithBuiltInDataProviders(settings)
 
-        walletBalanceTextView = view.findViewById(R.id.wallet_balance)
-        updateWalletDisplay()
-
-        // Replace the existing walletUpdateReceiver with this updated version
-        walletUpdateReceiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) {
-                if (intent?.action == "WALLET_BALANCE_UPDATED") {
-                    val balance = intent.getDoubleExtra("balance", 0.0)
-                    activity?.runOnUiThread {
-                        walletBalanceTextView.text = "₱%.2f".format(balance)
-                        Log.d("WalletUpdate", "Received balance update: $balance")
-                    }
-                }
-            }
-        }
-
-        // Update the receiver registration
-        val filter = IntentFilter("WALLET_BALANCE_UPDATED")
-        requireActivity().registerReceiver(
-            walletUpdateReceiver,
-            filter,
-            Context.RECEIVER_NOT_EXPORTED
-        )
 
         setupMapbox()
         setupFirebase(view)
@@ -200,17 +176,6 @@ class FirstFragment : Fragment() {
 
 
         return view
-    }
-
-
-    private fun updateWalletDisplay() {
-        val sharedPreferences = requireActivity().getSharedPreferences(
-            "MySharedPref",
-            Context.MODE_PRIVATE
-        )
-        val balance = sharedPreferences.getFloat("wallet_balance", 1000f)
-        walletBalanceTextView.text = "₱%.2f".format(balance)
-        Log.d("WalletUpdate", "Wallet display updated: $balance")
     }
 
 
@@ -513,7 +478,7 @@ class FirstFragment : Fragment() {
         // Set home as selected when returning to the fragment
         bottomNavigation.selectedItemId = R.id.navigation_home
         checkLocationServices()
-        updateWalletDisplay()
+
     }
 
     override fun onDestroyView() {
@@ -522,17 +487,6 @@ class FirstFragment : Fragment() {
             mapView.location.removeOnIndicatorPositionChangedListener(listener)
         }
         connectivityManager.unregisterNetworkCallback(networkCallback)
-
-        // Add this block
-        walletUpdateReceiver?.let {
-            requireActivity().unregisterReceiver(it)
-        }
-    }
-
-    private fun updateWallet(amount: Double) {
-        val editor = sharedPreferences?.edit()
-        editor?.putFloat("wallet_balance", amount.toFloat())
-        editor?.apply()
     }
 
 }

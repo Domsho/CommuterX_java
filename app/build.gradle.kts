@@ -85,5 +85,4 @@ dependencies {
     implementation ("com.mapbox.navigationcore:ui-maps:3.5.1")
     implementation ("com.mapbox.navigationcore:tripdata:3.5.1")
     implementation ("com.mapbox.navigationcore:android:3.5.1")
-    implementation ("com.mapbox.navigationcore:ui-components:3.5.1")
 }

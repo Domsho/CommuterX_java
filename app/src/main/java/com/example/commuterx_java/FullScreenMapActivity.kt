@@ -88,6 +88,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import com.mapbox.common.location.Location as MapboxLocation
+import com.mapbox.navigation.base.trip.model.RouteProgress
 
 
 
@@ -115,7 +116,6 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
     private lateinit var routeLineApi: MapboxRouteLineApi
     private lateinit var routeLineView: MapboxRouteLineView
     private var totalDistance = 0.0
-    private var pricePerKilometer = 30.0
     private lateinit var busFareTextView: TextView
     private lateinit var jeepFareTextView: TextView
     private lateinit var uvFareTextView: TextView
@@ -130,17 +130,17 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
         private const val JEEP_RATE = 6.0  // Jeep: ₱6.00 / km
         private const val UV_RATE = 12.0   // UV: ₱12.00 / km
         private const val TRAIN_RATE = 5.0 // Train: ₱5.00 / km
+        private const val REROUTE_THRESHOLD = 50.0 // Distance in meters before rerouting
     }
 
     private val locationObserver = object : LocationObserver {
         override fun onNewRawLocation(rawLocation: MapboxLocation) {
-            Log.d("Navigation", "Raw location update received")
+            // Update for raw location changes
         }
 
         override fun onNewLocationMatcherResult(locationMatcherResult: LocationMatcherResult) {
             val location = locationMatcherResult.enhancedLocation
-            val point = Point.fromLngLat(location.longitude, location.latitude)
-            Log.d("Navigation", "New matched location: ${point.latitude()}, ${point.longitude()}")
+            val currentPoint = Point.fromLngLat(location.longitude, location.latitude)
 
             // Update navigation location provider
             navigationLocationProvider.changePosition(
@@ -149,15 +149,19 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
             )
 
             // Update the route line
-            val result = routeLineApi.updateTraveledRouteLine(point)
-            if (result != null) {
-                Log.d("Navigation", "Route line update available")
+            routeLineApi.updateTraveledRouteLine(currentPoint)?.let { result ->
                 mapView.getMapboxMap().getStyle()?.let { style ->
                     routeLineView.renderRouteLineUpdate(style, result)
-                    Log.d("Navigation", "Route line rendered")
                 }
-            } else {
-                Log.e("Navigation", "Failed to update route line - null result")
+            }
+
+            // Check if we need to recalculate route
+            selectedLocationPoint?.let { destination ->
+                val distanceToDestination = calculateDistance(currentPoint, destination)
+                if (distanceToDestination > REROUTE_THRESHOLD) {
+                    // Recalculate route from current position
+                    fetchRoute(destination)
+                }
             }
         }
     }
@@ -220,7 +224,6 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
             setupSearch()
             setupRecyclerView()
             setupLocationUpdates()
-            setTestWalletBalance(1000.0)
 
 
 
@@ -268,41 +271,66 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
         routeLineView = MapboxRouteLineView(viewOptions)
     }
 
-    @SuppressLint("MissingPermission")
     private fun startNavigation(routes: List<NavigationRoute>) {
-        Log.d("Navigation", "Starting navigation with ${routes.size} routes")
+        // First check for location permission
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            // Request permission if not granted
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                LOCATION_PERMISSION_REQUEST_CODE
+            )
+            return
+        }
 
         mapboxNavigation?.let { navigation ->
-            // First stop any existing trip session
+            // Stop any existing trip session
             navigation.stopTripSession()
 
             // Set the routes
             navigation.setNavigationRoutes(routes)
 
-            // Start the trip session
-            navigation.startTripSession()
-            Log.d("Navigation", "Trip session started")
+            // Start the trip session with enhanced options and foreground service check
+            navigation.startTripSession(
+                withForegroundService = true
+            )
 
-            // Register observers if not already registered
+            // Register observers
             navigation.registerLocationObserver(locationObserver)
             navigation.registerRouteProgressObserver(routeProgressObserver)
 
-            // Hide search UI but ensure details card stays visible
-            if (detailsCard.visibility == View.VISIBLE) {
-                // Only hide search-related UI
-                searchResultsRecyclerView.visibility = View.GONE
-                searchView.setQuery("", false)
-                searchView.clearFocus()
-
-                // Hide keyboard
-                val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
-                currentFocus?.let {
-                    imm.hideSoftInputFromWindow(it.windowToken, 0)
-                }
-            } else {
-                hideSearchUI()
+            navigationLocationProvider.lastLocation?.let { location ->
+                mapView.camera.flyTo(
+                    CameraOptions.Builder()
+                        .center(Point.fromLngLat(location.longitude, location.latitude))
+                        .zoom(15.0)
+                        .build()
+                )
             }
-        } ?: Log.e("Navigation", "MapboxNavigation is null")
+
+            // Hide search UI
+            hideSearchUI()
+        }
+    }
+
+    private fun calculateDistance(point1: Point, point2: Point): Double {
+        // Calculate distance between two points using the Haversine formula
+        val R = 6371e3 // Earth's radius in meters
+        val φ1 = Math.toRadians(point1.latitude())
+        val φ2 = Math.toRadians(point2.latitude())
+        val Δφ = Math.toRadians(point2.latitude() - point1.latitude())
+        val Δλ = Math.toRadians(point2.longitude() - point1.longitude())
+
+        val a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ/2) * Math.sin(Δλ/2)
+        val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+
+        return R * c // Distance in meters
     }
 
     private fun setupObservers() {
@@ -381,90 +409,25 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
             return
         }
 
-        // Extract the fare amount from the button text
-        val fareText = trackRouteButton.text.toString()
-        val fareAmount = extractFareAmount(fareText)
-
-        if (fareAmount == null) {
-            Toast.makeText(this, "Invalid fare amount", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        Log.d("TrackRoute", "Track route button clicked with fare: $fareAmount")
-        val currentBalance = getWalletBalance()
-
-        if (currentBalance >= fareAmount) {
-            val newBalance = currentBalance - fareAmount
-            updateWallet(newBalance)
-            Log.d("TrackRoute", "Wallet updated. New balance: $newBalance")
-
-            // Add these lines to ensure route is displayed
-            selectedLocationPoint?.let { destination ->
-                mapboxNavigation?.setNavigationRoutes(currentRoutes)
-
-                // Update route line visibility
-                routeLineApi.setNavigationRoutes(currentRoutes) { value ->
-                    mapView.getMapboxMap().getStyle()?.let { style ->
-                        routeLineView.renderRouteDrawData(style, value)
-                    }
+        selectedLocationPoint?.let { destination ->
+            mapboxNavigation?.setNavigationRoutes(currentRoutes)
+            routeLineApi.setNavigationRoutes(currentRoutes) { value ->
+                mapView.getMapboxMap().getStyle()?.let { style ->
+                    routeLineView.renderRouteDrawData(style, value)
                 }
             }
-
-            // Hide the details card and scrim with animation
-            hideDetailsCard()
-
-            // Hide the scrim with animation
-            scrim.animate()
-                .alpha(0f)
-                .setDuration(300)
-                .withEndAction {
-                    scrim.visibility = View.GONE
-                }
-                .start()
-
-            startTrackingRoute()
-        } else {
-            Log.d("TrackRoute", "Insufficient funds in wallet.")
-            Toast.makeText(this, "Insufficient funds in wallet.", Toast.LENGTH_SHORT).show()
         }
-    }
 
-    private fun extractFareAmount(fareText: String): Double? {
-        // Expected format: "Confirm Route - ₱XX.XX"
-        return try {
-            val regex = "₱(\\d+\\.?\\d*)".toRegex()
-            val matchResult = regex.find(fareText)
-            matchResult?.groupValues?.get(1)?.toDouble()
-        } catch (e: Exception) {
-            Log.e("FareExtraction", "Error extracting fare: ${e.message}")
-            null
-        }
-    }
+        hideDetailsCard()
+        scrim.animate()
+            .alpha(0f)
+            .setDuration(300)
+            .withEndAction {
+                scrim.visibility = View.GONE
+            }
+            .start()
 
-    private fun setTestWalletBalance(amount: Double) {
-        val sharedPreferences = getSharedPreferences("MySharedPref", MODE_PRIVATE)
-        val editor = sharedPreferences.edit()
-        editor.putFloat("wallet_balance", amount.toFloat())
-        editor.apply()
-        Log.d("WalletBalance", "Test wallet balance set to: $amount")
-    }
-
-    private fun updateWallet(amount: Double) {
-        val sharedPreferences = getSharedPreferences("MySharedPref", MODE_PRIVATE)
-        val editor = sharedPreferences.edit()
-        editor.putFloat("wallet_balance", amount.toFloat())
-        editor.apply()
-
-        // Broadcast the wallet update
-        val intent = Intent("WALLET_BALANCE_UPDATED")
-        intent.putExtra("balance", amount)
-        sendBroadcast(intent)
-    }
-
-    private fun simulatePayment(): Boolean {
-        // Simulate a payment process (replace with actual payment logic)
-        Toast.makeText(this, "Payment Process Started", Toast.LENGTH_SHORT).show()
-        return true // Simulate successful payment
+        startTrackingRoute()
     }
 
     private fun startTrackingRoute() {
@@ -587,60 +550,45 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
     private fun updateSelectedTransport(type: String) {
         selectedTransportType = type
 
-        // Reset all backgrounds
-        findViewById<LinearLayout>(R.id.busFareLayout).setBackgroundResource(android.R.color.transparent)
-        findViewById<LinearLayout>(R.id.jeepneyFareLayout).setBackgroundResource(android.R.color.transparent)
-        findViewById<LinearLayout>(R.id.uvFareLayout).setBackgroundResource(android.R.color.transparent)
-        findViewById<LinearLayout>(R.id.trainFareLayout).setBackgroundResource(android.R.color.transparent)
+        // Reset all backgrounds to transparent
+        findViewById<LinearLayout>(R.id.busFareLayout).setBackgroundColor(Color.TRANSPARENT)
+        findViewById<LinearLayout>(R.id.jeepneyFareLayout).setBackgroundColor(Color.TRANSPARENT)
+        findViewById<LinearLayout>(R.id.uvFareLayout).setBackgroundColor(Color.TRANSPARENT)
+        findViewById<LinearLayout>(R.id.trainFareLayout).setBackgroundColor(Color.TRANSPARENT)
 
-        // Highlight selected option
+        // Get the selected layout and set its background
         val selectedLayout = when(type) {
-            "bus" -> findViewById(R.id.busFareLayout)
-            "jeepney" -> findViewById(R.id.jeepneyFareLayout)
-            "uv" -> findViewById(R.id.uvFareLayout)
-            "train" -> findViewById<LinearLayout>(R.id.trainFareLayout)
+            "bus" -> R.id.busFareLayout
+            "jeepney" -> R.id.jeepneyFareLayout
+            "uv" -> R.id.uvFareLayout
+            "train" -> R.id.trainFareLayout
             else -> null
         }
 
-        selectedLayout?.setBackgroundResource(R.drawable.selected_transport_background)
-
-        val fareText = when(type) {
-            "bus" -> busFareTextView.text
-            "jeepney" -> jeepFareTextView.text
-            "uv" -> uvFareTextView.text
-            "train" -> trainFareTextView.text
-            else -> ""
+        // Apply highlight to selected transport type
+        selectedLayout?.let { layoutId ->
+            findViewById<LinearLayout>(layoutId).setBackgroundResource(R.drawable.selected_transport_background)
         }
-        trackRouteButton.text = "Confirm Route - $fareText"
+
+        // Update button state
+        trackRouteButton.text = "Start Navigation"
         trackRouteButton.isEnabled = true
     }
 
     private fun calculateFares(distanceInKm: Double) {
-        // Calculate fares using per-kilometer rates
-        val busFare = BUS_RATE * distanceInKm
-        val jeepFare = JEEP_RATE * distanceInKm
-        val uvFare = UV_RATE * distanceInKm
-        val trainFare = TRAIN_RATE * distanceInKm
+        totalDistance = distanceInKm
 
-        // Update the TextViews with calculated fares
-        busFareTextView.text = String.format("Bus: ₱%.2f", busFare)
-        jeepFareTextView.text = String.format("Jeepney: ₱%.2f", jeepFare)
-        uvFareTextView.text = String.format("UV Express: ₱%.2f", uvFare)
-        trainFareTextView.text = String.format("Train: ₱%.2f", trainFare)
+        // Calculate fares for each transport type
+        val busFare = distanceInKm * BUS_RATE
+        val jeepFare = distanceInKm * JEEP_RATE
+        val uvFare = distanceInKm * UV_RATE
+        val trainFare = distanceInKm * TRAIN_RATE
 
-        // Make fare options visible
-        findViewById<LinearLayout>(R.id.busFareLayout).visibility = View.VISIBLE
-        findViewById<LinearLayout>(R.id.jeepneyFareLayout).visibility = View.VISIBLE
-        findViewById<LinearLayout>(R.id.uvFareLayout).visibility = View.VISIBLE
-        findViewById<LinearLayout>(R.id.trainFareLayout).visibility = View.VISIBLE
-
-        Log.d("FareCalculation", """
-        Distance: $distanceInKm km
-        Bus Fare: ₱$busFare
-        Jeep Fare: ₱$jeepFare
-        UV Fare: ₱$uvFare
-        Train Fare: ₱$trainFare
-    """.trimIndent())
+        // Update UI with calculated fares
+        busFareTextView.text = "₱%.2f".format(busFare)
+        jeepFareTextView.text = "₱%.2f".format(jeepFare)
+        uvFareTextView.text = "₱%.2f".format(uvFare)
+        trainFareTextView.text = "₱%.2f".format(trainFare)
     }
 
     private fun setupLocationServices() {
@@ -814,24 +762,8 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
     """.trimIndent())
     }
 
-    @SuppressLint("MissingPermission")
     private fun centerOnUserLocation() {
         mapView.location.addOnIndicatorPositionChangedListener { point ->
-            // Calculate distance from previous location to current location
-            val currentLocation = android.location.Location("current").apply {
-                latitude = point.latitude()
-                longitude = point.longitude()
-            }
-
-            // Assuming you have a way to get the previous location
-            val previousLocation = getPreviousLocation()
-
-
-            val distance = currentLocation.distanceTo(previousLocation) / 1000 // Convert to kilometers
-            totalDistance += distance // Update total distance
-            updateWallet(totalDistance * pricePerKilometer) // Update wallet based on distance
-
-
             // Set camera to the new location
             mapView.mapboxMap.setCamera(
                 CameraOptions.Builder()
@@ -841,11 +773,6 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
                     .build()
             )
         }
-    }
-
-    private fun getPreviousLocation() {
-        // Retrieve the last known location from shared preferences or another source
-        // Return a Location object or null if not available
     }
 
     private val onMoveListener = object : OnMoveListener {
@@ -950,15 +877,27 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
     }
 
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         when (requestCode) {
             LOCATION_PERMISSION_REQUEST_CODE -> {
-                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    Log.e("LocationDebug", "Location permission granted")
-                    centerOnUserLocation()
+                if (grantResults.isNotEmpty() &&
+                    grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // Permission granted, restart navigation
+                    currentRoutes?.let { routes ->
+                        startNavigation(routes)
+                    }
                 } else {
-                    Log.e("LocationDebug", "Location permission denied")
+                    // Permission denied
+                    Toast.makeText(
+                        this,
+                        "Location permission is required for navigation",
+                        Toast.LENGTH_LONG
+                    ).show()
                 }
             }
         }
@@ -1146,23 +1085,6 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
                 routeLineView.renderRouteLineUpdate(style, result)
             }
         }
-
-        // Calculate the distance traveled
-        val distanceTraveled = routeProgress.distanceTraveled // in meters
-        val distanceInKilometers = distanceTraveled / 1000 // convert to kilometers
-
-        // Calculate the price
-        val pricePerKilometer = 30.0 // in Philippine pesos
-        val totalPrice = distanceInKilometers * pricePerKilometer
-
-        // Update the wallet balance
-        val currentBalance = getWalletBalance()
-        if (currentBalance >= totalPrice) {
-            updateWallet(currentBalance - totalPrice)
-            Log.d("PriceUpdate", "Price deducted: $totalPrice. New balance: ${currentBalance - totalPrice}")
-        } else {
-            Log.d("PriceUpdate", "Insufficient funds. Current balance: $currentBalance, required: $totalPrice")
-        }
     }
 
     override fun onDestroy() {
@@ -1242,15 +1164,6 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
         }
     }
 
-    private fun getWalletBalance(): Double {
-        // Since SharedPreferences operations are relatively quick, this can stay on main thread
-        // But if you want to be extra safe:
-        return runBlocking(Dispatchers.IO) {
-            val sharedPreferences = getSharedPreferences("MySharedPref", MODE_PRIVATE)
-            sharedPreferences.getFloat("wallet_balance", 1000f).toDouble()
-        }
-    }
-
     private fun hideSearchUI() {
         lifecycleScope.launch(Dispatchers.Main) {
             try {
@@ -1270,6 +1183,3 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
     }
 }
 
-private fun android.location.Location.distanceTo(previousLocation: Unit): Float {
-    return this.distanceTo(previousLocation)
-}
