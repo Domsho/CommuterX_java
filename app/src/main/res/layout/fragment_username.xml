@@ -45,6 +45,7 @@
         android:text="Finish"
         android:textColor="@android:color/white"
         android:textAllCaps="false"
+        app:backgroundTint="#2196F3"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="@id/username_input"
         app:layout_constraintStart_toStartOf="@id/username_input"

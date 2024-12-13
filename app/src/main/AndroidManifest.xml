@@ -98,10 +98,6 @@
             android:exported="false"
             android:theme="@style/Theme.AppCompat.NoActionBar"/>
         <activity
-            android:name=".PaymentMethodsActivity"
-            android:exported="false"
-            android:theme="@style/Theme.AppCompat.NoActionBar"/>
-        <activity
             android:name=".LanguageActivity"
             android:exported="false"
             android:theme="@style/Theme.AppCompat.NoActionBar"/>

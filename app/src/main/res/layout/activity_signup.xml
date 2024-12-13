@@ -25,7 +25,7 @@
         android:background="@drawable/edit_text_background"
         android:fontFamily="@font/nexa_font_family"
         android:hint="Enter Email"
-        android:textColor="#000000"
+        android:textColor="@color/white"
         android:inputType="textEmailAddress"
         android:layout_centerHorizontal="true"
         android:padding="15dp"
@@ -39,12 +39,12 @@
         android:layout_marginTop="16dp"
         android:background="@drawable/edit_text_background"
         android:fontFamily="@font/nexa_font_family"
-        android:hint="Enter Password"
+        android:hint="Password (min. 8 chars: A-Z, a-z, 0-9, @#$%^&amp;+=)"
         android:inputType="textPassword"
         android:layout_centerHorizontal="true"
         android:padding="15dp"
-        android:textColorHint="@color/white"
-        android:textColor="#000000" />
+        android:textColorHint="#80FFFFFF"
+        android:textColor="@color/white" />
 
 
     <com.google.android.material.button.MaterialButton

@@ -37,6 +37,17 @@ class SignupActivity : AppCompatActivity() {
                     Toast.makeText(this, "Enter Password", Toast.LENGTH_SHORT).show()
                     return@setOnClickListener
                 }
+                !isPasswordValid(password) -> {
+                    Toast.makeText(this,
+                        "Password must contain:\n" +
+                                "- At least 8 characters\n" +
+                                "- One uppercase letter\n" +
+                                "- One lowercase letter\n" +
+                                "- One number\n" +
+                                "- One special character (@#\$%^&+=)",
+                        Toast.LENGTH_LONG).show()
+                    return@setOnClickListener
+                }
                 else -> {
                     registerUser(email, password)
                 }
@@ -54,7 +65,19 @@ class SignupActivity : AppCompatActivity() {
         }
     }
 
+    private fun isPasswordValid(password: String): Boolean {
+        val passwordPattern = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=])(?=\\S+$).{8,}$"
+        return password.matches(passwordPattern.toRegex())
+    }
+
     private fun registerUser(email: String, password: String) {
+        if (!isPasswordValid(password)) {
+            Toast.makeText(this,
+                "Password must contain at least 8 characters, including uppercase, lowercase, number, and special character",
+                Toast.LENGTH_LONG).show()
+            return
+        }
+
         mAuth.createUserWithEmailAndPassword(email, password)
             .addOnCompleteListener(this) { task ->
                 if (task.isSuccessful) {
