@@ -54,32 +54,12 @@
         android:background="#333333"
         app:layout_constraintTop_toBottomOf="@id/notifications_container"/>
 
-    <LinearLayout
-        android:id="@+id/payment_methods_container"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:clickable="true"
-        android:focusable="true"
-        android:background="?attr/selectableItemBackground"
-        app:layout_constraintTop_toBottomOf="@id/notifications_divider">
-
-        <TextView
-            android:id="@+id/payment_methods"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Payment Methods"
-            android:textColor="@android:color/white"
-            android:textSize="18sp"
-            android:padding="16dp"/>
-    </LinearLayout>
-
     <View
         android:id="@+id/payment_methods_divider"
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:background="#333333"
-        app:layout_constraintTop_toBottomOf="@id/payment_methods_container"/>
+        app:layout_constraintTop_toBottomOf="@id/notifications_divider"/>
 
     <LinearLayout
         android:id="@+id/language_container"

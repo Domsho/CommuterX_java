@@ -23,11 +23,6 @@ class SettingsActivity : AppCompatActivity() {
             overridePendingTransition(R.animator.slide_in_right, R.animator.slide_out_left)
         }
 
-        findViewById<LinearLayout>(R.id.payment_methods_container).setOnClickListener {
-            startActivity(Intent(this, PaymentMethodsActivity::class.java))
-            overridePendingTransition(R.animator.slide_in_right, R.animator.slide_out_left)
-        }
-
         findViewById<LinearLayout>(R.id.language_container).setOnClickListener {
             startActivity(Intent(this, LanguageActivity::class.java))
             overridePendingTransition(R.animator.slide_in_right, R.animator.slide_out_left)
