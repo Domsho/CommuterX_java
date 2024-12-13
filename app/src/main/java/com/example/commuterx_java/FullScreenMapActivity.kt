@@ -89,7 +89,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import com.mapbox.common.location.Location as MapboxLocation
 import com.mapbox.navigation.base.trip.model.RouteProgress
-
+import android.widget.RatingBar
+import androidx.appcompat.app.AlertDialog
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
+import com.example.commuterx_java.models.TripReview
 
 
 class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, MapboxNavigationObserver {
@@ -122,6 +126,8 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
     private lateinit var trainFareTextView: TextView
     private var selectedTransportType: String? = null
     private var currentRoutes: List<NavigationRoute> = emptyList()
+    private var isReviewShown = false
+    private val DESTINATION_THRESHOLD = 100.0 // meters
 
 
     companion object {
@@ -155,11 +161,16 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
                 }
             }
 
-            // Check if we need to recalculate route
+            // Check distance to destination and show review if close enough
             selectedLocationPoint?.let { destination ->
                 val distanceToDestination = calculateDistance(currentPoint, destination)
+                if (distanceToDestination <= DESTINATION_THRESHOLD) {
+                    runOnUiThread {
+                        showReviewDialog()
+                    }
+                }
+                // Existing reroute check
                 if (distanceToDestination > REROUTE_THRESHOLD) {
-                    // Recalculate route from current position
                     fetchRoute(destination)
                 }
             }
@@ -252,6 +263,57 @@ class FullScreenMapActivity : AppCompatActivity(), LocationServiceObserver, Mapb
         } catch (e: Exception) {
             Log.e("LocationDebug", "Exception in onCreate: ${e.message}", e)
         }
+    }
+
+    private fun showReviewDialog() {
+        if (isReviewShown) return
+        isReviewShown = true
+
+        val dialog = AlertDialog.Builder(this, com.google.android.material.R.style.ThemeOverlay_MaterialComponents_Dialog)
+        val dialogView = layoutInflater.inflate(R.layout.dialog_trip_review, null)
+
+        val ratingBar = dialogView.findViewById<RatingBar>(R.id.ratingBar)
+        val feedbackInput = dialogView.findViewById<EditText>(R.id.feedbackInput)
+
+        dialog.setView(dialogView)
+            .setTitle("Rate Your Trip")
+            .setPositiveButton("Submit") { _, _ ->
+                val rating = ratingBar.rating
+                val feedback = feedbackInput.text.toString()
+                submitReview(rating, feedback)
+            }
+            .setNegativeButton("Cancel", null)
+            .setCancelable(false)
+            .show()
+    }
+
+    private fun submitReview(rating: Float, feedback: String) {
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser == null) {
+            Toast.makeText(this, "Please sign in to submit reviews", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val review = TripReview(
+            userId = currentUser.uid,
+            rating = rating,
+            feedback = feedback,
+            transportType = selectedTransportType ?: "unknown",
+            origin = "Starting Point",
+            destination = detailsPlaceNameTextView.text.toString(),
+            timestamp = System.currentTimeMillis()
+        )
+
+        val database = FirebaseDatabase.getInstance()
+        val reviewsRef = database.getReference("trip_reviews")
+
+        reviewsRef.push().setValue(review)
+            .addOnSuccessListener {
+                Toast.makeText(this, "Thank you for your feedback!", Toast.LENGTH_SHORT).show()
+            }
+            .addOnFailureListener { e ->
+                Toast.makeText(this, "Failed to submit review: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
     }
 
 
